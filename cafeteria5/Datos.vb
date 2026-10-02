@@ -12,11 +12,13 @@ Namespace CafeteriaOS
         Public ListaPedidos As New List(Of Pedido)
         Public ListaClientes As New List(Of ClienteRegistrado)
         Public ListaProveedores As New List(Of Proveedor)
+        Public ListaIngresos As New List(Of IngresoStock)()
 
         Public UsuarioActual As Usuario
         Public Caja As New SesionCaja()
 
         Private contadorPedidos As Integer = 1
+        Private contadorIngresos As Integer = 1
 
         ''' <summary>
         ''' Secuencia independiente de la cantidad de pedidos: no se repiten numeros si
@@ -30,6 +32,20 @@ Namespace CafeteriaOS
             p.ID = contadorPedidos
             contadorPedidos += 1
             ListaPedidos.Add(p)
+        End Sub
+
+        ''' <summary>
+        ''' Secuencia propia de los ingresos: los numeros no se repiten aunque se borre
+        ''' alguno de la lista.
+        ''' </summary>
+        Public Function SiguienteIdIngreso() As Integer
+            Return contadorIngresos
+        End Function
+
+        Public Sub RegistrarIngreso(i As IngresoStock)
+            i.ID = contadorIngresos
+            contadorIngresos += 1
+            ListaIngresos.Add(i)
         End Sub
 
         Public Function UsuarioActualNombre() As String

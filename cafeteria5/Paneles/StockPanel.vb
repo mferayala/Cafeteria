@@ -14,7 +14,9 @@ Namespace CafeteriaOS
 
         Private WithEvents txtBuscar As TextBox
         Private WithEvents chkSoloCriticos As CheckBox
-        Private tabla As DataGridView
+        Private WithEvents tabla As DataGridView
+        Private WithEvents tablaIngresos As DataGridView
+        Private lblDetalle As Label
         Private productos As New System.Collections.Generic.List(Of Producto)()
 
         Public Sub New()
@@ -27,13 +29,14 @@ Namespace CafeteriaOS
                 .Name = "th.fondo",
                 .Dock = DockStyle.Fill,
                 .ColumnCount = 1,
-                .RowCount = 3,
+                .RowCount = 4,
                 .BackColor = Tema.BgPrincipal
             }
             raiz.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 100))
             raiz.RowStyles.Add(New RowStyle(SizeType.AutoSize))
             raiz.RowStyles.Add(New RowStyle(SizeType.Percent, 100))
             raiz.RowStyles.Add(New RowStyle(SizeType.AutoSize))
+            raiz.RowStyles.Add(New RowStyle(SizeType.Percent, 42))
 
             txtBuscar = Tema.CrearInput()
             txtBuscar.Dock = DockStyle.Fill
@@ -81,7 +84,111 @@ Namespace CafeteriaOS
             AddHandler btnReponer.Click, Sub(s, e) Reponer()
 
             raiz.Controls.Add(UiKit.Botonera(btnMenos, btnMas, btnDiez, btnReponer), 0, 2)
+            raiz.Controls.Add(ArmarDetalle(), 0, 3)
             Contenido.Controls.Add(raiz)
+        End Sub
+
+        ''' <summary>
+        ''' Panel de detalle: de que proveedor y en que fecha entro cada unidad del
+        ''' producto elegido. Es el historial que permite ubicar el origen de una
+        ''' mercaderia que se danio o vencio.
+        ''' </summary>
+        Private Function ArmarDetalle() As Control
+            Dim tarjeta As New Panel With {
+                .Name = "th.tarjeta",
+                .Dock = DockStyle.Fill,
+                .BackColor = Tema.Superficie,
+                .Padding = New Padding(12, 10, 12, 10)
+            }
+
+            Dim layout As New TableLayoutPanel With {
+                .Dock = DockStyle.Fill,
+                .ColumnCount = 1,
+                .RowCount = 2,
+                .BackColor = Color.Transparent
+            }
+            layout.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 100))
+            layout.RowStyles.Add(New RowStyle(SizeType.AutoSize))
+            layout.RowStyles.Add(New RowStyle(SizeType.Percent, 100))
+
+            lblDetalle = Tema.CrearLabel("", Tono.Secundario, Tema.TamMini)
+            lblDetalle.Dock = DockStyle.Fill
+            lblDetalle.AutoSize = False
+            lblDetalle.Height = 18
+            lblDetalle.TextAlign = ContentAlignment.MiddleLeft
+
+            tablaIngresos = Tema.CrearTabla()
+            tablaIngresos.Dock = DockStyle.Fill
+            tablaIngresos.ReadOnly = True
+            tablaIngresos.AllowUserToAddRows = False
+            tablaIngresos.AllowUserToDeleteRows = False
+            tablaIngresos.SelectionMode = DataGridViewSelectionMode.FullRowSelect
+            UiKit.Columna(tablaIngresos, "Fecha de ingreso", 130)
+            UiKit.Columna(tablaIngresos, "Proveedor", 230)
+            UiKit.Columna(tablaIngresos, "Contacto", 160)
+            UiKit.Columna(tablaIngresos, "Cantidad", 90)
+            UiKit.Columna(tablaIngresos, "Sin consumir", 110)
+            tablaIngresos.Columns(1).FillWeight = 60
+            tablaIngresos.Columns(2).FillWeight = 40
+            tablaIngresos.Columns(3).FillWeight = 10
+            tablaIngresos.Columns(4).FillWeight = 10
+
+            layout.Controls.Add(lblDetalle, 0, 0)
+            layout.Controls.Add(tablaIngresos, 0, 1)
+            tarjeta.Controls.Add(layout)
+            Return tarjeta
+        End Function
+
+        ''' <summary>
+        ''' Muestra de que proveedor y en que fecha entro cada unidad del producto
+        ''' elegido, del ingreso mas nuevo al mas viejo.
+        ''' </summary>
+        Private Sub MostrarDetalle()
+            tablaIngresos.Rows.Clear()
+
+            Dim producto = ProductoSeleccionado()
+            If producto Is Nothing Then
+                lblDetalle.Text = "Elegi un producto para ver de que proveedor ingreso cada unidad."
+                Return
+            End If
+
+            Dim ingresos = IngresoService.PorProducto(producto)
+            If ingresos.Count = 0 Then
+                lblDetalle.Text = producto.Nombre & ": sin ingresos de proveedores. " &
+                                  "El stock se esta ajustando a mano."
+                Return
+            End If
+
+            Dim pendientes = IngresoService.PendientesPorVencer(producto)
+            Dim restante As Integer
+            For Each lote In pendientes
+                restante += lote.Cantidad
+            Next
+
+            Dim ultimo = ingresos(0)
+            lblDetalle.Text = producto.Nombre & ": " & ingresos.Count & " ingreso(s). " &
+                              "El ultimo sumo " & ultimo.CantidadDe(producto) & " unidad(es), " &
+                              IngresoService.Describir(ultimo) & ". " &
+                              "Sin consumir: " & restante & " de " & producto.Stock & "."
+
+            For Each ingreso In ingresos
+                Dim cantidad = ingreso.CantidadDe(producto)
+                Dim sinConsumir = pendientes.
+                    Where(Function(l) ReferenceEquals(l.Ingreso, ingreso)).
+                    Sum(Function(l) l.Cantidad)
+                Dim indice = tablaIngresos.Rows.Add(ingreso.FechaCorta(),
+                                                    If(ingreso.Proveedor Is Nothing, "", ingreso.Proveedor.Nombre),
+                                                    If(ingreso.Proveedor Is Nothing, "",
+                                                       ingreso.Proveedor.ContactoPrincipal),
+                                                    cantidad.ToString(),
+                                                    sinConsumir.ToString())
+                tablaIngresos.Rows(indice).DefaultCellStyle.ForeColor =
+                    If(sinConsumir = 0, Tema.TextoSec, Tema.TextoPrinc)
+            Next
+        End Sub
+
+        Private Sub tabla_SelectionChanged(sender As Object, e As EventArgs) Handles tabla.SelectionChanged
+            MostrarDetalle()
         End Sub
 
         Public Overrides Sub Refrescar()
@@ -111,6 +218,7 @@ Namespace CafeteriaOS
 
             Dim criticos = StockService.Criticos().Count
             SetearSubtitulo(criticos & " producto(s) en stock critico")
+            MostrarDetalle()
         End Sub
 
         Private Sub Ajustar(delta As Integer)
