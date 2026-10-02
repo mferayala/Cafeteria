@@ -151,7 +151,9 @@ Namespace CafeteriaOS
                 .BackColor = Color.Transparent
             }
             For Each c In controles
-                p.Controls.Add(c)
+                Dim ctrl = c
+                ctrl.Margin = New Padding(6, 0, 6, 0)
+                p.Controls.Add(ctrl)
             Next
             Return p
         End Function

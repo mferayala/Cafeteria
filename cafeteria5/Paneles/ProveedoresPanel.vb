@@ -84,14 +84,12 @@ Namespace CafeteriaOS
             btnEditar = Tema.CrearBoton("Editar", EstiloBoton.Neutro, 100, 38)
             btnEliminar = Tema.CrearBoton("Eliminar", EstiloBoton.Peligro, 110, 38)
             btnExportar = Tema.CrearBoton("Exportar CSV", EstiloBoton.Info, 140, 38)
-            btnIngreso = Tema.CrearBoton("Registrar ingreso", EstiloBoton.Exito, 170, 38)
             AddHandler btnNuevo.Click, Sub(s, e) Nuevo()
             AddHandler btnEditar.Click, Sub(s, e) Editar()
             AddHandler btnEliminar.Click, Sub(s, e) Eliminar()
             AddHandler btnExportar.Click, Sub(s, e) Exportar()
-            AddHandler btnIngreso.Click, Sub(s, e) RegistrarIngreso()
 
-            raiz.Controls.Add(UiKit.Botonera(btnNuevo, btnEditar, btnIngreso, btnEliminar, btnExportar), 0, 2)
+            raiz.Controls.Add(UiKit.Botonera(btnNuevo, btnEditar, btnEliminar, btnExportar), 0, 2)
             Contenido.Controls.Add(raiz)
         End Sub
 
@@ -101,7 +99,6 @@ Namespace CafeteriaOS
             Dim puedeEliminar = AutenticacionService.PuedeEliminarProveedores(rol)
             btnNuevo.Enabled = puedeEditar
             btnEditar.Enabled = puedeEditar
-            btnIngreso.Enabled = puedeEditar
             btnEliminar.Enabled = puedeEliminar
 
             Dim texto = If(txtBuscar.Text, String.Empty).Trim().ToLowerInvariant()

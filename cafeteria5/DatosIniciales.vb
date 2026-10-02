@@ -86,7 +86,11 @@ Namespace CafeteriaOS
                 .Stock = stock,
                 .Categoria = categoria,
                 .Descripcion = descripcion,
-                .Atajo = atajo
+                .Atajo = atajo,
+                .CodigoBarra = "",
+                .Marca = "",
+                .UnidadMedida = "un",
+                .PrecioCosto = 0D
             }
             If specs IsNot Nothing Then prod.Specs = specs
             Return prod

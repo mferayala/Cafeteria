@@ -25,6 +25,13 @@ Namespace CafeteriaOS
         Private lblResumen As Label
         Private WithEvents tabla As DataGridView
 
+        Private txtCodigoBarra As TextBox
+        Private txtMarca As TextBox
+        Private txtUnidadMedida As TextBox
+        Private numPrecioCosto As NumericUpDown
+        Private numPrecioVenta As NumericUpDown
+        Private lblPrecioRecomendado As Label
+
         Public Sub New(proveedor As Proveedor)
             Me.proveedor = proveedor
             ArmarInterfaz()
@@ -48,6 +55,29 @@ Namespace CafeteriaOS
             End Using
         End Function
 
+        Public Shared Function Reponer(producto As Producto) As IngresoStock
+            If producto Is Nothing Then
+                MessageBox.Show("Elegi un producto de la lista.", "Ingresar stock",
+                                MessageBoxButtons.OK, MessageBoxIcon.Information)
+                Return Nothing
+            End If
+            Using f As New IngresoStockForm(Nothing)
+                f.PrecargarProducto(producto)
+                If f.ShowDialog() <> DialogResult.OK Then Return Nothing
+                Return f.ingresoCreado
+            End Using
+        End Function
+
+        Private Sub PrecargarProducto(producto As Producto)
+            If producto Is Nothing Then Return
+            Try
+                cmbProducto.SelectedItem = producto
+            Catch
+            End Try
+            cmbProducto.Enabled = False
+            numCantidad.Focus()
+        End Sub
+
         Private ingresoCreado As IngresoStock
 
         #Region "Construccion"
@@ -60,7 +90,7 @@ Namespace CafeteriaOS
             Me.ForeColor = Tema.TextoPrinc
             Me.FormBorderStyle = FormBorderStyle.FixedDialog
             Me.StartPosition = FormStartPosition.CenterParent
-            Me.ClientSize = New System.Drawing.Size(720, 560)
+            Me.ClientSize = New System.Drawing.Size(860, 620)
 
             Dim raiz As New TableLayoutPanel With {
                 .Dock = DockStyle.Fill,
@@ -71,7 +101,7 @@ Namespace CafeteriaOS
             }
             raiz.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 100))
             raiz.RowStyles.Add(New RowStyle(SizeType.Absolute, 54))
-            raiz.RowStyles.Add(New RowStyle(SizeType.Absolute, 62))
+            raiz.RowStyles.Add(New RowStyle(SizeType.Absolute, 110))
             raiz.RowStyles.Add(New RowStyle(SizeType.Absolute, 46))
             raiz.RowStyles.Add(New RowStyle(SizeType.Percent, 100))
             raiz.RowStyles.Add(New RowStyle(SizeType.Absolute, 50))
@@ -169,10 +199,14 @@ Namespace CafeteriaOS
         End Sub
 
         Private Sub ActualizarCabecera()
-            Dim texto = "Ingreso de " & If(proveedor Is Nothing, "(sin proveedor)", proveedor.Nombre)
-            If proveedor IsNot Nothing AndAlso
-               Not String.IsNullOrWhiteSpace(proveedor.ContactoPrincipal) Then
-                texto &= " - contacto: " & proveedor.ContactoPrincipal.Trim()
+            Dim texto = "Ingreso de stock"
+            If proveedor IsNot Nothing Then
+                texto = "Ingreso de " & proveedor.Nombre
+                If Not String.IsNullOrWhiteSpace(proveedor.ContactoPrincipal) Then
+                    texto &= " - contacto: " & proveedor.ContactoPrincipal.Trim()
+                End If
+            Else
+                texto = "Ingreso / reposicion de stock (sin proveedor)"
             End If
             lblProveedor.Text = texto
         End Sub

@@ -14,6 +14,10 @@ Namespace CafeteriaOS
         Public ListaProveedores As New List(Of Proveedor)
         Public ListaIngresos As New List(Of IngresoStock)()
 
+        '''Configuracion global del negocio (accesible para administradores).'''
+        Public ConfigNegocio As New ConfiguracionNegocio()
+
+        '''Usuario actualmente logueado (o Nothing si no hay sesion).'''
         Public UsuarioActual As Usuario
         Public Caja As New SesionCaja()
 

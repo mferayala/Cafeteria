@@ -11,6 +11,10 @@ Namespace CafeteriaOS
     Public Class Producto
         Public Property ID As Integer
         Public Property Nombre As String
+        Public Property CodigoBarra As String
+        Public Property Marca As String
+        Public Property UnidadMedida As String
+        Public Property PrecioCosto As Decimal
         Public Property Precio As Decimal
         Public Property Stock As Integer
         Public Property Categoria As String

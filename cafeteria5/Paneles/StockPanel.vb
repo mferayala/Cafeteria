@@ -75,15 +75,13 @@ Namespace CafeteriaOS
             raiz.Controls.Add(tabla, 0, 1)
 
             Dim btnMenos = Tema.CrearBoton("-1", EstiloBoton.Neutro, 70, 36)
-            Dim btnMas = Tema.CrearBoton("+1", EstiloBoton.Neutro, 70, 36)
-            Dim btnDiez = Tema.CrearBoton("+10", EstiloBoton.Info, 70, 36)
             Dim btnReponer = Tema.CrearBoton("Reponer stock", EstiloBoton.Exito, 160, 36)
-            AddHandler btnMenos.Click, Sub(s, e) Ajustar(-1)
-            AddHandler btnMas.Click, Sub(s, e) Ajustar(1)
-            AddHandler btnDiez.Click, Sub(s, e) Ajustar(10)
-            AddHandler btnReponer.Click, Sub(s, e) Reponer()
+            Dim btnIngresar = Tema.CrearBoton("Ingresar stock", EstiloBoton.Primario, 160, 36)
+            AddHandler btnMenos.Click, Sub(se, ev) Ajustar(-1)
+            AddHandler btnReponer.Click, Sub(se, ev) Reponer()
+            AddHandler btnIngresar.Click, Sub(se, ev) IngresarStock()
 
-            raiz.Controls.Add(UiKit.Botonera(btnMenos, btnMas, btnDiez, btnReponer), 0, 2)
+            raiz.Controls.Add(UiKit.Botonera(btnMenos, btnReponer, btnIngresar), 0, 2)
             raiz.Controls.Add(ArmarDetalle(), 0, 3)
             Contenido.Controls.Add(raiz)
         End Sub
@@ -129,11 +127,9 @@ Namespace CafeteriaOS
             UiKit.Columna(tablaIngresos, "Cantidad", 90)
             UiKit.Columna(tablaIngresos, "Sin consumir", 110)
             UiKit.Columna(tablaIngresos, "Como llego", 260)
-            tablaIngresos.Columns(1).FillWeight = 40
-            tablaIngresos.Columns(2).FillWeight = 24
-            tablaIngresos.Columns(3).FillWeight = 8
-            tablaIngresos.Columns(4).FillWeight = 8
-            tablaIngresos.Columns(5).FillWeight = 40
+            For i = 0 To tablaIngresos.Columns.Count - 1
+                tablaIngresos.Columns(i).FillWeight = 20
+            Next
 
             layout.Controls.Add(lblDetalle, 0, 0)
             layout.Controls.Add(tablaIngresos, 0, 1)
@@ -157,7 +153,7 @@ Namespace CafeteriaOS
             Dim ingresos = IngresoService.PorProducto(producto)
             If ingresos.Count = 0 Then
                 lblDetalle.Text = producto.Nombre & ": sin ingresos de proveedores. " &
-                                  "El stock se esta ajustando a mano."
+                                  "El stock se ajusta manualmente."
                 Return
             End If
 
@@ -287,6 +283,19 @@ Namespace CafeteriaOS
             If tabla Is Nothing Then Return
             Refrescar()
         End Sub
+        Private Sub IngresarStock()
+            Dim producto = ProductoSeleccionado()
+            If producto Is Nothing Then
+                MessageBox.Show("Elegi un producto de la lista.", "Ingresar stock",
+                                MessageBoxButtons.OK, MessageBoxIcon.Information)
+                Return
+            End If
+
+            Dim ingreso = IngresoStockForm.Reponer(producto)
+            If ingreso Is Nothing Then Return
+            Refrescar()
+        End Sub
+
     End Class
 
 End Namespace
