@@ -37,9 +37,20 @@ Namespace CafeteriaOS
                 ' Si el mismo producto viene dos veces se acumula en una sola linea.
                 Dim repetido = lineas.FirstOrDefault(Function(x) ReferenceEquals(x.Producto, d.Producto))
                 If repetido Is Nothing Then
-                    lineas.Add(New DetalleIngreso With {.Producto = d.Producto, .Cantidad = d.Cantidad})
+                    lineas.Add(New DetalleIngreso With {
+                        .Producto = d.Producto,
+                        .Cantidad = d.Cantidad,
+                        .Observacion = d.Observacion
+                    })
                 Else
                     repetido.Cantidad += d.Cantidad
+                    ' Al juntar dos lineas del mismo producto las notas se suman: si
+                    ' alguna viene vacia se conserva la que habia.
+                    If Not String.IsNullOrWhiteSpace(d.Observacion) Then
+                        repetido.Observacion = If(String.IsNullOrWhiteSpace(repetido.Observacion),
+                                                  d.Observacion,
+                                                  repetido.Observacion.Trim() & " / " & d.Observacion.Trim())
+                    End If
                 End If
             Next
 
@@ -63,6 +74,10 @@ Namespace CafeteriaOS
 
             proveedor.UltimaCompra = ingreso.Fecha
             proveedor.FechaUltimaOperacion = ingreso.Fecha
+
+            ' El historial va a disco recien despues de aplicar el stock: si el
+            ' registro falla, la mercaderia igual quedo ingresada.
+            IngresoAlmacen.Guardar()
 
             resultado.Ok = True
             resultado.Ingreso = ingreso

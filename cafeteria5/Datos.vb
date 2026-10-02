@@ -42,6 +42,14 @@ Namespace CafeteriaOS
             Return contadorIngresos
         End Function
 
+        ''' <summary>
+        ''' Retoma la numeracion despues de recuperar el historial del disco, para que
+        ''' un ingreso guardado no compita por numero con uno nuevo.
+        ''' </summary>
+        Public Sub AjustarContadorIngresos(maxId As Integer)
+            If maxId >= contadorIngresos Then contadorIngresos = maxId + 1
+        End Sub
+
         Public Sub RegistrarIngreso(i As IngresoStock)
             i.ID = contadorIngresos
             contadorIngresos += 1

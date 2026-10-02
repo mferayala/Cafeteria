@@ -128,12 +128,18 @@ Namespace CafeteriaOS
             UiKit.Columna(tabla, "Stock actual", 110)
             UiKit.Columna(tabla, "Cantidad", 110)
             UiKit.Columna(tabla, "Stock resultante", 130)
-            tabla.ReadOnly = True
+            UiKit.Columna(tabla, "Como llego", 240)
             tabla.AllowUserToAddRows = False
             tabla.AllowUserToDeleteRows = False
             tabla.SelectionMode = DataGridViewSelectionMode.FullRowSelect
             tabla.Columns(3).DefaultCellStyle.ForeColor = Tema.Azul
             tabla.Columns(3).DefaultCellStyle.Font = Tema.Fuente(Tema.TamNormal, FontStyle.Bold)
+            ' Todo es solo lectura menos la observacion: ahi se anota como llego la
+            ' mercaderia, por ejemplo si vino con las esquinas aplastadas.
+            For i = 0 To 3
+                tabla.Columns(i).ReadOnly = True
+            Next
+            tabla.Columns(4).ReadOnly = False
             raiz.Controls.Add(tabla, 0, 3)
 
             btnConfirmar = Tema.CrearBoton("Confirmar ingreso", EstiloBoton.Exito, 190, 38)
@@ -212,6 +218,8 @@ Namespace CafeteriaOS
                 Return
             End If
 
+            LeerObservaciones()
+
             Dim resultado = IngresoService.Registrar(proveedor, lineas, Nothing)
             If Not resultado.Ok Then
                 MessageBox.Show(resultado.Mensaje, "Ingreso de mercaderia",
@@ -229,12 +237,26 @@ Namespace CafeteriaOS
             Close()
         End Sub
 
+        ''' <summary>
+        ''' Copia lo anotado en la columna de observacion a las lineas. Se lee antes de
+        ''' confirmar porque la tabla se dibuja desde las lineas y no al reves.
+        ''' </summary>
+        Private Sub LeerObservaciones()
+            For Each fila As DataGridViewRow In tabla.Rows
+                Dim linea = TryCast(fila.Tag, DetalleIngreso)
+                If linea Is Nothing Then Continue For
+                linea.Observacion = If(fila.Cells(4).Value Is Nothing, "",
+                                       fila.Cells(4).Value.ToString().Trim())
+            Next
+        End Sub
+
         Private Sub ActualizarResumen()
             tabla.Rows.Clear()
             For Each d In lineas
                 Dim antes = d.Producto.Stock
-                tabla.Rows.Add(d.Producto.Nombre, antes.ToString(), d.Cantidad.ToString(),
-                               (antes + d.Cantidad).ToString())
+                Dim indice = tabla.Rows.Add(d.Producto.Nombre, antes.ToString(), d.Cantidad.ToString(),
+                                            (antes + d.Cantidad).ToString(), d.Observacion)
+                tabla.Rows(indice).Tag = d
             Next
 
             lblResumen.Text = lineas.Count & " producto(s), " &

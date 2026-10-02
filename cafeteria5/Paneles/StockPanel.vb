@@ -128,10 +128,12 @@ Namespace CafeteriaOS
             UiKit.Columna(tablaIngresos, "Contacto", 160)
             UiKit.Columna(tablaIngresos, "Cantidad", 90)
             UiKit.Columna(tablaIngresos, "Sin consumir", 110)
-            tablaIngresos.Columns(1).FillWeight = 60
-            tablaIngresos.Columns(2).FillWeight = 40
-            tablaIngresos.Columns(3).FillWeight = 10
-            tablaIngresos.Columns(4).FillWeight = 10
+            UiKit.Columna(tablaIngresos, "Como llego", 260)
+            tablaIngresos.Columns(1).FillWeight = 40
+            tablaIngresos.Columns(2).FillWeight = 24
+            tablaIngresos.Columns(3).FillWeight = 8
+            tablaIngresos.Columns(4).FillWeight = 8
+            tablaIngresos.Columns(5).FillWeight = 40
 
             layout.Controls.Add(lblDetalle, 0, 0)
             layout.Controls.Add(tablaIngresos, 0, 1)
@@ -176,14 +178,24 @@ Namespace CafeteriaOS
                 Dim sinConsumir = pendientes.
                     Where(Function(l) ReferenceEquals(l.Ingreso, ingreso)).
                     Sum(Function(l) l.Cantidad)
+                Dim linea = ingreso.LineaDe(producto)
+                Dim observacion = If(linea Is Nothing, Nothing, linea.Observacion)
                 Dim indice = tablaIngresos.Rows.Add(ingreso.FechaCorta(),
                                                     If(ingreso.Proveedor Is Nothing, "", ingreso.Proveedor.Nombre),
                                                     If(ingreso.Proveedor Is Nothing, "",
                                                        ingreso.Proveedor.ContactoPrincipal),
                                                     cantidad.ToString(),
-                                                    sinConsumir.ToString())
+                                                    sinConsumir.ToString(),
+                                                    If(observacion, ""))
                 tablaIngresos.Rows(indice).DefaultCellStyle.ForeColor =
                     If(sinConsumir = 0, Tema.TextoSec, Tema.TextoPrinc)
+                ' La mercaderia se acepta igual, pero queda a la vista que llego
+                ' con un detalle para no perder el dato.
+                If String.IsNullOrWhiteSpace(observacion) Then
+                    tablaIngresos.Rows(indice).Cells(5).Style.ForeColor = Tema.Naranja
+                    tablaIngresos.Rows(indice).Cells(5).Style.Font =
+                        Tema.Fuente(Tema.TamMini, FontStyle.Bold)
+                End If
             Next
         End Sub
 

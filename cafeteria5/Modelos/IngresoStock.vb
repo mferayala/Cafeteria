@@ -12,6 +12,19 @@ Namespace CafeteriaOS
         Public Property Producto As Producto
         Public Property Cantidad As Integer
 
+        ''' <summary>
+        ''' Como llego la mercaderia. La mercaderia se acepta igual y suma al stock,
+        ''' esto solo deja constancia: sirve para el caso de una caja de leches que
+        ''' llega con las esquinas aplastadas pero con el contenido bien.
+        ''' </summary>
+        Public Property Observacion As String
+
+        Public ReadOnly Property TieneObservacion As Boolean
+            Get
+                Return Not String.IsNullOrWhiteSpace(Observacion)
+            End Get
+        End Property
+
         Public Function Describe() As String
             Return Cantidad & " x " & If(Producto Is Nothing, "(sin producto)", Producto.Nombre)
         End Function
@@ -40,9 +53,14 @@ Namespace CafeteriaOS
         End Function
 
         Public Function CantidadDe(producto As Producto) As Integer
-            Dim detalle = Detalles.FirstOrDefault(Function(d) ReferenceEquals(d.Producto, producto))
+            Dim detalle = LineaDe(producto)
             If detalle Is Nothing Then Return 0
             Return detalle.Cantidad
+        End Function
+
+        ''' <summary>La linea completa de un producto dentro de este ingreso.</summary>
+        Public Function LineaDe(producto As Producto) As DetalleIngreso
+            Return Detalles.FirstOrDefault(Function(d) ReferenceEquals(d.Producto, producto))
         End Function
 
         ''' <summary>Fecha del ingreso formateada para las listas de historial.</summary>

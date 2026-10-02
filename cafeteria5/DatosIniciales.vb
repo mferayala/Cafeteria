@@ -19,6 +19,9 @@ Namespace CafeteriaOS
             Datos.ListaProveedores.AddRange(Proveedores())
             Datos.ListaClientes.Clear()
             Datos.ListaPedidos.Clear()
+            ' El historial de ingresos va al final: para reconstruirlo hacen falta los
+            ' proveedores y los productos ya cargados.
+            IngresoAlmacen.Cargar()
             Datos.UsuarioActual = Nothing
             Datos.Caja = New SesionCaja()
         End Sub
