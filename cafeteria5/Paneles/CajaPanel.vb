@@ -44,7 +44,7 @@ Namespace CafeteriaOS
             indVentas = New UiKit.Indicador("Ventas del turno", "--", Tema.Verde)
             indEgresos = New UiKit.Indicador("Egresos", "--", Tema.Rojo)
             indSaldo = New UiKit.Indicador("Saldo en caja", "--", Tema.Acento)
-            raiz.Controls.Add(FilaDeIndicadores(indApertura, indVentas, indEgresos, indSaldo), 0, 0)
+            raiz.Controls.Add(UiKit.FilaDeIndicadores(indApertura, indVentas, indEgresos, indSaldo), 0, 0)
 
             lblEstado = Tema.CrearLabel("", Tono.Secundario, Tema.TamMini, FontStyle.Bold)
             lblEstado.Dock = DockStyle.Fill
@@ -101,22 +101,6 @@ Namespace CafeteriaOS
             raiz.Controls.Add(ingreso, 0, 3)
             Contenido.Controls.Add(raiz)
         End Sub
-
-        Private Shared Function FilaDeIndicadores(ParamArray indicadores As UiKit.Indicador()) As TableLayoutPanel
-            Dim fila As New TableLayoutPanel With {
-                .Name = "th.fondo",
-                .Dock = DockStyle.Fill,
-                .ColumnCount = indicadores.Length,
-                .RowCount = 1,
-                .BackColor = Color.Transparent,
-                .Height = 74
-            }
-            For i = 0 To indicadores.Length - 1
-                fila.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 100))
-                fila.Controls.Add(indicadores(i).Raiz, i, 0)
-            Next
-            Return fila
-        End Function
 
         Public Overrides Sub Refrescar()
             Dim caja = Datos.Caja

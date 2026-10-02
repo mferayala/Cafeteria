@@ -47,22 +47,7 @@ Namespace CafeteriaOS
             indTicket = New UiKit.Indicador("Ticket promedio", "--", Tema.Acento)
             indPico = New UiKit.Indicador("Horario pico", "--", Tema.Naranja)
 
-            Dim indicadores As New TableLayoutPanel With {
-                .Name = "th.fondo",
-                .Dock = DockStyle.Fill,
-                .ColumnCount = 4,
-                .RowCount = 1,
-                .BackColor = Color.Transparent,
-                .Height = 74
-            }
-            For i = 0 To 3
-                indicadores.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 25))
-            Next
-            indicadores.Controls.Add(indVentas.Raiz, 0, 0)
-            indicadores.Controls.Add(indPedidos.Raiz, 1, 0)
-            indicadores.Controls.Add(indTicket.Raiz, 2, 0)
-            indicadores.Controls.Add(indPico.Raiz, 3, 0)
-            raiz.Controls.Add(indicadores, 0, 0)
+            raiz.Controls.Add(UiKit.FilaDeIndicadores(indVentas, indPedidos, indTicket, indPico), 0, 0)
 
             panelHoras = New Panel With {
                 .Name = "th.tarjeta",

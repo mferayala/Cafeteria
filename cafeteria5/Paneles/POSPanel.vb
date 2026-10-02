@@ -184,6 +184,9 @@ Namespace CafeteriaOS
             lstItems.Columns.Add("Cant.", 48)
             lstItems.Columns.Add("Precio", 78)
             lstItems.Columns.Add("Subtotal", 90)
+            AddHandler lstItems.ClientSizeChanged,
+                Sub(s, e) UiKit.EstirarColumnas(lstItems, 0)
+            UiKit.EstirarColumnas(lstItems, 0)
 
             Dim btnMas = Tema.CrearBoton("+", EstiloBoton.Neutro, 44, 34)
             Dim btnMenos = Tema.CrearBoton("-", EstiloBoton.Neutro, 44, 34)

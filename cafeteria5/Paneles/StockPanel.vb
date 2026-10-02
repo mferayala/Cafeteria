@@ -74,7 +74,7 @@ Namespace CafeteriaOS
             Dim btnMenos = Tema.CrearBoton("-1", EstiloBoton.Neutro, 70, 36)
             Dim btnMas = Tema.CrearBoton("+1", EstiloBoton.Neutro, 70, 36)
             Dim btnDiez = Tema.CrearBoton("+10", EstiloBoton.Info, 70, 36)
-            Dim btnReponer = Tema.CrearBoton("Reponer al maximo", EstiloBoton.Exito, 160, 36)
+            Dim btnReponer = Tema.CrearBoton("Reponer stock", EstiloBoton.Exito, 160, 36)
             AddHandler btnMenos.Click, Sub(s, e) Ajustar(-1)
             AddHandler btnMas.Click, Sub(s, e) Ajustar(1)
             AddHandler btnDiez.Click, Sub(s, e) Ajustar(10)
@@ -131,10 +131,24 @@ Namespace CafeteriaOS
                                 MessageBoxButtons.OK, MessageBoxIcon.Information)
                 Return
             End If
+
+            ' El boton suma las unidades que se escriban, asi que el dialogo propone
+            ' justamente las que faltan para llegar al umbral y no un numero fijo.
+            Dim faltante = StockService.UmbralCritico - producto.Stock
+            If faltante < 1 Then
+                MessageBox.Show(producto.Nombre & " ya tiene " & producto.Stock &
+                                " unidades, no hay nada critico para reponer.",
+                                "Reponer stock", MessageBoxButtons.OK, MessageBoxIcon.Information)
+                Return
+            End If
+
             Dim cantidad As Integer
-            Dim escrito = InputBox("Cantidad a reponer de " & producto.Nombre,
-                                   "Reponer stock", "20")
+            Dim escrito = InputBox("Cuantas unidades de " & producto.Nombre & " vas a reponer?" &
+                                   Environment.NewLine & "Stock actual: " & producto.Stock &
+                                   Environment.NewLine & "Minimo: " & StockService.UmbralCritico,
+                                   "Reponer stock", faltante.ToString())
             If Not Integer.TryParse(escrito, cantidad) OrElse cantidad <= 0 Then Return
+
             StockService.Ajustar(producto, cantidad)
             Refrescar()
         End Sub

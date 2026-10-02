@@ -113,6 +113,9 @@ Namespace CafeteriaOS
             lista.Columns.Add("Cliente", 110)
             lista.Columns.Add("Total", 80)
             lista.Columns.Add("Items", 46)
+            AddHandler lista.ClientSizeChanged,
+                Sub(s, e) UiKit.EstirarColumnas(lista, 1)
+            UiKit.EstirarColumnas(lista, 1)
             AddHandler lista.SelectedIndexChanged, Sub(s, e) Seleccionar(lista, estado)
             columnas(estado) = lista
             panel.Controls.Add(lista, 0, 1)

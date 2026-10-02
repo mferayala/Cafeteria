@@ -9,6 +9,13 @@ Namespace CafeteriaOS
 
         ''' <summary>Tarjeta de indicador con su valor actualizable sin recrear controles.</summary>
         Public Class Indicador
+            ''' <summary>
+            ''' Alto de la tarjeta. La fila de indicadores tiene que medir lo mismo que
+            ''' la tarjeta: si la fila queda mas baja, el borde de abajo de la tarjeta
+            ''' pisa el numero grande y lo deja cortado.
+            ''' </summary>
+            Public Const Alto As Integer = 88
+
             Public ReadOnly Property Raiz As Panel
             Public ReadOnly Property Valor As Label
 
@@ -60,6 +67,52 @@ Namespace CafeteriaOS
                 Valor.Text = texto
             End Sub
         End Class
+
+        ''' <summary>
+        ''' Fila horizontal de tarjetas de indicador, una por columna y todas del mismo
+        ''' ancho. Vive aca porque Reportes y Caja la usaban igual pero cada una con su
+        ''' propia copia.
+        ''' </summary>
+        Public Function FilaDeIndicadores(ParamArray indicadores As Indicador()) As TableLayoutPanel
+            Dim fila As New TableLayoutPanel With {
+                .Name = "th.fondo",
+                .Dock = DockStyle.Top,
+                .ColumnCount = indicadores.Length,
+                .RowCount = 1,
+                .BackColor = Color.Transparent,
+                .Height = Indicador.Alto
+            }
+            ' Sin RowStyle la fila unica queda con el alto por defecto del panel y las
+            ' tarjetas se salen del borde de abajo.
+            fila.RowStyles.Add(New RowStyle(SizeType.Percent, 100))
+            For i = 0 To indicadores.Length - 1
+                fila.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 100))
+                fila.Controls.Add(indicadores(i).Raiz, i, 0)
+            Next
+            Return fila
+        End Function
+
+        ''' <summary>
+        ''' Reparte el ancho sobrante entre las columnas indicadas y deja el resto con
+        ''' su ancho fijo. Las cabeceras de un ListView no se estiran solas, asi que sin
+        ''' esto al lado de la ultima columna queda el rectangulo vacio del fondo.
+        ''' </summary>
+        Public Sub EstirarColumnas(lista As ListView, ParamArray indices As Integer())
+            Dim fijas As Integer
+            For i = 0 To lista.Columns.Count - 1
+                If Not indices.Contains(i) Then fijas += lista.Columns(i).Width
+            Next
+
+            Dim libre = indices.Length
+            If libre < 1 Then Exit Sub
+
+            Dim ancho = (lista.ClientSize.Width - fijas) \ libre
+            For Each i In indices
+                If i >= 0 AndAlso i < lista.Columns.Count Then
+                    lista.Columns(i).Width = Math.Max(40, ancho)
+                End If
+            Next
+        End Sub
 
         ''' <summary>
         ''' Agrega una columna con el ancho indicado. Se construye la columna de forma

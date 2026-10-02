@@ -80,6 +80,9 @@ Namespace CafeteriaOS
             detalle.Columns.Add("Total", 110)
             detalle.Columns.Add("Pago", 120)
             detalle.Columns.Add("Estado", 120)
+            AddHandler detalle.ClientSizeChanged,
+                Sub(s, e) UiKit.EstirarColumnas(detalle, 1)
+            UiKit.EstirarColumnas(detalle, 1)
             raiz.Controls.Add(detalle, 0, 3)
             Contenido.Controls.Add(raiz)
         End Sub

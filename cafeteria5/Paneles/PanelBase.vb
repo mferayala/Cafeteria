@@ -44,9 +44,13 @@ Namespace CafeteriaOS
             lblTitulo.TextAlign = ContentAlignment.MiddleLeft
 
             lblSubtitulo = Tema.CrearLabel(subtitulo, Tono.SobreAcentoSuave, Tema.TamMini)
-            lblSubtitulo.Dock = DockStyle.Fill
             lblSubtitulo.TextAlign = ContentAlignment.MiddleRight
-            lblSubtitulo.AutoSize = False
+            ' La columna del subtitulo es AutoSize, asi que el label tiene que medir su
+            ' propio texto. Con AutoSize apagado la columna queda con el ancho por
+            ' defecto de 100px y cualquier subtitulo largo aparece cortado.
+            lblSubtitulo.AutoSize = True
+            ' Tope para que un subtitulo largo no le robe el lugar al titulo.
+            lblSubtitulo.MaximumSize = New Size(420, 0)
 
             cabecera.Controls.Add(lblTitulo, 0, 0)
             cabecera.Controls.Add(lblSubtitulo, 1, 0)
