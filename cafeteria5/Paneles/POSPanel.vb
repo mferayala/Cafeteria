@@ -43,22 +43,29 @@ Namespace CafeteriaOS
         #Region "Layout"
 
         Private Sub ArmarLayout()
-            Dim division As New SplitContainer With {
+            ' El POS se reparte con dos columnas en porcentaje en lugar de un
+            ' SplitContainer. El divisor obliga a fijar tamanos minimos (380 + 340 + 8)
+            ' y si la ventana queda mas angosta que esa suma, WinForms recalcula el
+            ' SplitterDistance y tira InvalidOperationException al abrir el modulo.
+            ' Con porcentajes el panel se acomoda solo al ancho disponible, que es lo
+            ' que pide la especificacion para el Dashboard maximizado o restaurado.
+            Dim raiz As New TableLayoutPanel With {
                 .Name = "th.fondo",
                 .Dock = DockStyle.Fill,
-                .BackColor = Tema.BgPrincipal,
-                .Panel1MinSize = 380,
-                .Panel2MinSize = 340,
-                .SplitterWidth = 8
+                .ColumnCount = 2,
+                .RowCount = 1,
+                .BackColor = Tema.BgPrincipal
             }
-            division.Orientation = System.Windows.Forms.Orientation.Vertical
-            division.Panel1.BackColor = Tema.BgPrincipal
-            division.Panel2.BackColor = Tema.BgPrincipal
+            raiz.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 58))
+            raiz.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 42))
+            raiz.RowStyles.Add(New RowStyle(SizeType.Percent, 100))
 
-            division.Panel1.Controls.Add(ArmarCatalogo())
-            division.Panel2.Controls.Add(ArmarComprobante())
-            Contenido.Controls.Add(division)
-            AddHandler division.Resize, Sub(s, e) AjustarAnchoCatalogo()
+            raiz.Controls.Add(ArmarCatalogo(), 0, 0)
+            raiz.Controls.Add(ArmarComprobante(), 1, 0)
+            Contenido.Controls.Add(raiz)
+
+            ' Las tarjetas del catalogo se reacomodan cada vez que cambia el ancho.
+            AddHandler flowProductos.SizeChanged, Sub(s, e) AjustarAnchoCatalogo()
             AjustarAnchoCatalogo()
         End Sub
 
@@ -97,7 +104,7 @@ Namespace CafeteriaOS
             }
             raiz.Controls.Add(flowProductos, 0, 1)
             raiz.SetColumnSpan(flowProductos, 2)
-            return raiz
+            Return raiz
         End Function
 
         Private Function ArmarComprobante() As Control
@@ -231,7 +238,7 @@ Namespace CafeteriaOS
             l.Width = 100
             l.TextAlign = ContentAlignment.MiddleLeft
             l.Margin = New Padding(0, 3, 10, 3)
-            return l
+            Return l
         End Function
 
         Private Shared Function TotalLabel(prefijo As String) As Label
@@ -244,6 +251,7 @@ Namespace CafeteriaOS
         End Function
 
         Private Sub AjustarAnchoCatalogo()
+            If flowProductos.ClientSize.Width <= 0 Then Return
             Dim ancho = flowProductos.ClientSize.Width - 4
             Dim columnas = Math.Max(1, ancho \ 180)
             Dim card = Math.Max(150, (ancho - 10 * (columnas - 1)) \ columnas)

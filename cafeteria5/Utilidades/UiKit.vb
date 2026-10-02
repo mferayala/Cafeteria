@@ -13,7 +13,11 @@ Namespace CafeteriaOS
             Public ReadOnly Property Valor As Label
 
             Public Sub New(titulo As String, valorInicial As String, color As Color)
-                Dim raiz As New Panel With {
+                ' El Panel local no se llama "raiz" a proposito: en VB los nombres no
+                ' distinguen mayusculas, asi que chocaria con la propiedad Raiz y la
+                ' asignacion "Raiz = raiz" se resolveria a si misma dejando la
+                ' propiedad en Nothing.
+                Dim contenedor As New Panel With {
                     .Name = "th.tarjeta",
                     .Dock = DockStyle.Fill,
                     .BackColor = Tema.Superficie,
@@ -47,9 +51,9 @@ Namespace CafeteriaOS
 
                 layout.Controls.Add(lblTitulo, 0, 0)
                 layout.Controls.Add(Valor, 0, 1)
-                raiz.Controls.Add(layout)
+                contenedor.Controls.Add(layout)
 
-                Raiz = raiz
+                Raiz = contenedor
             End Sub
 
             Public Sub Actualizar(texto As String)
@@ -67,6 +71,11 @@ Namespace CafeteriaOS
             columna.HeaderText = titulo
             columna.Name = titulo
             columna.Width = ancho
+            ' El constructor sin parametros deja CellTemplate en Nothing, y despues la
+            ' tabla tira "Al menos una de las columnas no tiene ninguna plantilla de
+            ' celda" apenas se le agrega la primera fila. Se asigna a mano la celda de
+            ' texto para que toda tabla creada por aca pueda llenarse.
+            columna.CellTemplate = New DataGridViewTextBoxCell()
             tabla.Columns.Add(columna)
         End Sub
 
