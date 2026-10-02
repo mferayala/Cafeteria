@@ -68,7 +68,7 @@ Namespace CafeteriaOS
                 s.AppendLine(LineaDetalle(item))
             Next
             s.AppendLine("--------------------------------")
-            s.AppendLine("Atendido por: " & Datos.UsuarioActualNombre())
+            s.AppendLine("Atendido por: " & If(Datos.UsuarioActual Is Nothing, "Sistema", Datos.UsuarioActual.Nombre))
             Return s.ToString()
         End Function
 
@@ -79,7 +79,7 @@ Namespace CafeteriaOS
             s.AppendLine(ConstruirCabecera(pedido))
             s.AppendLine("--------------------------------")
             s.AppendLine(ConstruirDetalle(pedido))
-            s.AppendLine("Cajero: " & Datos.UsuarioActualNombre())
+            s.AppendLine("Cajero: " & If(Datos.UsuarioActual Is Nothing, "Sistema", Datos.UsuarioActual.Nombre))
             Return s.ToString()
         End Function
 
