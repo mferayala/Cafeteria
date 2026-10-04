@@ -46,6 +46,10 @@ Namespace CafeteriaOS
             For Each item In pedido.Items
                 item.Producto.Stock = Math.Max(0, item.Producto.Stock - item.Cantidad)
             Next
+            Try
+                MovimientoStockService.RegistrarVenta(pedido)
+            Catch
+            End Try
             pedido.StockDescontado = True
         End Sub
 
@@ -60,11 +64,20 @@ Namespace CafeteriaOS
             For Each item In pedido.Items
                 item.Producto.Stock += item.Cantidad
             Next
+            Try
+                MovimientoStockService.RegistrarCancelacion(pedido)
+            Catch
+            End Try
             pedido.StockDescontado = False
         End Sub
 
-        Public Sub Ajustar(producto As Producto, delta As Integer)
+        Public Sub Ajustar(producto As Producto, delta As Integer, Optional usuario As String = Nothing, Optional obs As String = Nothing)
+            If producto Is Nothing OrElse delta = 0 Then Return
             producto.Stock = Math.Max(0, producto.Stock + delta)
+            Try
+                MovimientoStockService.RegistrarAjuste(producto, delta, usuario, obs)
+            Catch
+            End Try
         End Sub
 
         Public Function Criticos() As List(Of Producto)

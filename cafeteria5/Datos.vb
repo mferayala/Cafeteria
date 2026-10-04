@@ -13,6 +13,7 @@ Namespace CafeteriaOS
         Public ListaClientes As New List(Of ClienteRegistrado)
         Public ListaProveedores As New List(Of Proveedor)
         Public ListaIngresos As New List(Of IngresoStock)()
+        Public ListaMovimientos As New List(Of MovimientoStock)()
 
         '''Configuracion global del negocio (accesible para administradores).'''
         Public ConfigNegocio As New ConfiguracionNegocio()
@@ -23,6 +24,7 @@ Namespace CafeteriaOS
 
         Private contadorPedidos As Integer = 1
         Private contadorIngresos As Integer = 1
+        Private contadorMovimientos As Integer = 1
 
         ''' <summary>
         ''' Secuencia independiente de la cantidad de pedidos: no se repiten numeros si
@@ -53,6 +55,19 @@ Namespace CafeteriaOS
         Public Sub AjustarContadorIngresos(maxId As Integer)
             If maxId >= contadorIngresos Then contadorIngresos = maxId + 1
         End Sub
+
+        Public Function SiguienteIdMovimiento() As Integer
+            Return contadorMovimientos
+        End Function
+
+        Public Sub RegistrarMovimiento(m As MovimientoStock)
+            If m Is Nothing Then Return
+            m.ID = contadorMovimientos
+            contadorMovimientos += 1
+            ListaMovimientos.Add(m)
+        End Sub
+
+
 
         Public Sub RegistrarIngreso(i As IngresoStock)
             i.ID = contadorIngresos

@@ -291,8 +291,8 @@ Namespace CafeteriaOS
                 Return
             End If
 
-            Dim ingreso = IngresoStockForm.Reponer(producto)
-            If ingreso Is Nothing Then Return
+            Dim ok = ReposicionStockForm.Reponer(producto)
+            If Not ok Then Return
             Refrescar()
         End Sub
 

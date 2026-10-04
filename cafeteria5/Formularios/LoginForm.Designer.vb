@@ -21,7 +21,7 @@ Namespace CafeteriaOS
         Private WithEvents btnSalir As Button
 
         Private Sub IniciarInterfaz()
-            Text = "Cafeteria - Ingreso"
+            Text = "Sistema de gestión de ventas - Ingreso"
             StartPosition = FormStartPosition.CenterScreen
             FormBorderStyle = FormBorderStyle.FixedDialog
             MaximizeBox = False

@@ -97,7 +97,7 @@ Namespace CafeteriaOS
         End Function
 
         ''' <summary>
-        ''' Catalogo del local. Los atajos son unicos en toda la lista para que no haya dos
+        ''' Catálogo de ejemplo (demo genérico). Los atajos son unicos en toda la lista para que no haya dos
         ''' productos compitiendo por la misma tecla.
         ''' </summary>
         Public Function Productos() As List(Of Producto)

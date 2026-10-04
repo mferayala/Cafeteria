@@ -78,6 +78,10 @@ Namespace CafeteriaOS
             ' El historial va a disco recien despues de aplicar el stock: si el
             ' registro falla, la mercaderia igual quedo ingresada.
             IngresoAlmacen.Guardar()
+            Try
+                MovimientoStockService.RegistrarIngreso(ingreso, Datos.UsuarioActualNombre())
+            Catch
+            End Try
 
             resultado.Ok = True
             resultado.Ingreso = ingreso

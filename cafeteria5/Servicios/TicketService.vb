@@ -18,7 +18,7 @@ Namespace CafeteriaOS
 
         Public Function ConstruirCabecera(pedido As Pedido) As String
             Dim s As New StringBuilder()
-            s.AppendLine("CAFETERIA - PEDIDO N. " & pedido.ID)
+            s.AppendLine("PEDIDO N. " & pedido.ID)
             s.AppendLine("Fecha: " & pedido.FechaHora.ToString("dd/MM/yyyy HH:mm"))
             If pedido.TipoServicio = TipoServicio.ParaLlevar Then
                 s.AppendLine("PARA LLEVAR")

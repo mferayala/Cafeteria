@@ -75,7 +75,16 @@ Namespace CafeteriaOS
             Catch
             End Try
             cmbProducto.Enabled = False
+            numCantidad.Value = 1
             numCantidad.Focus()
+            ' Para reposición rápida: agregar línea automáticamente
+            Dim existente = lineas.FirstOrDefault(Function(d) ReferenceEquals(d.Producto, producto))
+            If existente Is Nothing Then
+                lineas.Add(New DetalleIngreso With {.Producto = producto, .Cantidad = CInt(numCantidad.Value)})
+            Else
+                existente.Cantidad = CInt(numCantidad.Value)
+            End If
+            ActualizarResumen()
         End Sub
 
         Private ingresoCreado As IngresoStock

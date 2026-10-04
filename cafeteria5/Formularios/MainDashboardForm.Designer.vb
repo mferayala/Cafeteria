@@ -14,7 +14,7 @@ Namespace CafeteriaOS
         Private WithEvents btnSalir As Button
 
         Private Sub IniciarInterfaz()
-            Text = "Cafeteria - Sistema de gestion"
+            Text = "Sistema de gestión de ventas"
             StartPosition = FormStartPosition.CenterScreen
             WindowState = FormWindowState.Maximized
             MinimumSize = New Size(1024, 640)
