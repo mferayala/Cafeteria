@@ -61,7 +61,7 @@ Namespace CafeteriaOS
 
             lblMarca = New Label With {
                 .Name = "th.tono.Lateral",
-                .Text = "CAFETERIA",
+                .Text = "MI NEGOCIO",
                 .Font = Tema.Fuente(Tema.TamSeccion, FontStyle.Bold),
                 .ForeColor = Tema.Acento3,
                 .BackColor = Color.Transparent,

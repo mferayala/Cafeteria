@@ -42,10 +42,10 @@ Namespace CafeteriaOS
             }
             tarjeta.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 100))
 
-            lblTitulo = Tema.CrearLabel("CAFETERIA", Tono.Acento, Tema.TamLogin, FontStyle.Bold)
+            lblTitulo = Tema.CrearLabel("MI NEGOCIO", Tono.Acento, Tema.TamLogin, FontStyle.Bold)
             lblTitulo.Dock = DockStyle.Fill
             lblTitulo.TextAlign = ContentAlignment.MiddleCenter
-            lblSubtitulo = Tema.CrearLabel("Sistema de pedidos y gestion", Tono.Secundario, Tema.TamMini)
+            lblSubtitulo = Tema.CrearLabel("Gestion de ventas e inventario", Tono.Secundario, Tema.TamMini)
             lblSubtitulo.Dock = DockStyle.Fill
             lblSubtitulo.TextAlign = ContentAlignment.MiddleCenter
 

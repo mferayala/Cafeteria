@@ -31,7 +31,11 @@ Namespace CafeteriaOS
             MargenSobreCosto = 30D
             GastosFijosPorcentaje = 10D
             IVAGeneral = 21D
-            NombreNegocio = "CafeteriaOS"
+            ' Sin nombre de fabrica a proposito: si nadie abre la configuracion,
+            ' NombreParaMostrar devuelve "Mi Negocio". Poner aqui el nombre de
+            ' esta aplicacion hacia que el sistema se presentara como cafeteria
+            ' ante cualquier cliente que no lo haya configurado.
+            NombreNegocio = String.Empty
         End Sub
     End Class
 
