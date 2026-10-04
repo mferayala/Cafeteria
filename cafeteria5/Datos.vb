@@ -10,6 +10,7 @@ Namespace CafeteriaOS
 
         Public ListaProductos As New List(Of Producto)
         Public ListaPedidos As New List(Of Pedido)
+        Public ListaVentas As New List(Of Venta)
         Public ListaClientes As New List(Of ClienteRegistrado)
         Public ListaProveedores As New List(Of Proveedor)
         Public ListaIngresos As New List(Of IngresoStock)()
@@ -30,6 +31,9 @@ Namespace CafeteriaOS
         Public Caja As New SesionCaja()
 
         Private contadorPedidos As Integer = 1
+
+
+        Private contadorVentas As Integer = 1
         Private contadorIngresos As Integer = 1
         Private contadorMovimientos As Integer = 1
 
@@ -45,6 +49,31 @@ Namespace CafeteriaOS
             p.ID = contadorPedidos
             contadorPedidos += 1
             ListaPedidos.Add(p)
+        End Sub
+
+        ''' <summary>
+        ''' Secuencia propia de las ventas. No comparte contador con los pedidos: una
+        ''' venta de mostrador no pasa por ningun estado de pedido y asi igual tiene su
+        ''' numero, que es el que va impreso en el ticket y en el corte de caja.
+        '''
+        ''' Reserva el numero y avanza el contador en el momento. Antes se leia el contador
+        ''' sin avanzarlo y se armaba el numero recien al registrar: dos ventas preparadas
+        ''' antes de confirmar cualquiera de las dos salian con el mismo numero.
+        '''
+        ''' El numero no se recycle si la venta se descarta. Un hueco en la numeracion es
+        ''' preferible a repetir uno: un numero repetido hace ambigua una busqueda en el
+        ''' historial y un ticket puede quedar guardado con el mismo numero que otro.
+        ''' </summary>
+        Public Function ReservarIdVenta() As Integer
+            Dim id = contadorVentas
+            contadorVentas += 1
+            Return id
+        End Function
+
+        Public Sub RegistrarVenta(v As Venta)
+            If v Is Nothing Then Return
+            If v.ID = 0 Then v.ID = ReservarIdVenta()
+            ListaVentas.Add(v)
         End Sub
 
         ''' <summary>

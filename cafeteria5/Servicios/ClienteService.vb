@@ -19,6 +19,28 @@ Namespace CafeteriaOS
         Public Function RegistrarOActualizar(nombre As String,
                                              telefono As String,
                                              pedido As Pedido) As ClienteRegistrado
+            Return RegistrarOActualizar(nombre, telefono, pedido.Total,
+                                        pedido.MetodoPago, pedido.FechaHora, pedido.ID)
+        End Function
+
+        ''' <summary>
+        ''' El cliente no necesita saber si lo que se le cargo fue un Pedido o una
+        ''' Venta: le interesa cuanto gasto, como pago y cuando. Por eso la version de
+        ''' Venta no pasa el objeto entero, sino los mismos datos sueltos.
+        ''' </summary>
+        Public Function RegistrarOActualizar(nombre As String,
+                                             telefono As String,
+                                             venta As Venta) As ClienteRegistrado
+            Return RegistrarOActualizar(nombre, telefono, venta.Total,
+                                        venta.MetodoPago, venta.FechaHora, venta.ID)
+        End Function
+
+        Private Function RegistrarOActualizar(nombre As String,
+                                              telefono As String,
+                                              total As Decimal,
+                                              metodoPago As MetodoPago,
+                                              fecha As DateTime,
+                                              referenciaID As Integer) As ClienteRegistrado
 
             Dim nombreLimpio = If(nombre, String.Empty).Trim()
             Dim telLimpio = NormalizarTelefono(telefono)
@@ -44,11 +66,11 @@ Namespace CafeteriaOS
             End If
 
             cliente.CantidadPedidos += 1
-            cliente.TotalGastado += pedido.Total
-            cliente.UltimoPedido = pedido.FechaHora
-            cliente.MetodoPagoHabitual = pedido.MetodoPago
-            If Not cliente.HistorialPedidos.Contains(pedido.ID) Then
-                cliente.HistorialPedidos.Add(pedido.ID)
+            cliente.TotalGastado += total
+            cliente.UltimoPedido = fecha
+            cliente.MetodoPagoHabitual = metodoPago
+            If Not cliente.HistorialPedidos.Contains(referenciaID) Then
+                cliente.HistorialPedidos.Add(referenciaID)
             End If
             Return cliente
         End Function

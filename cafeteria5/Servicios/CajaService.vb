@@ -36,25 +36,36 @@ Namespace CafeteriaOS
             Datos.Caja.Abierta = False
         End Sub
 
-        Public Sub RegistrarVenta(pedido As Pedido)
+        ''' <summary>
+        ''' Asienta el cobro de una venta en la caja abierta.
+        '''
+        ''' El movimiento guarda el id de la venta ademas de la descripcion. Antes solo
+        ''' existia el texto "Pedido N. X" y la revocacion lo buscaba por ahi: dos ventas
+        ''' con la misma descripcion revocaban la misma y la otra quedaba colgada en el
+        ''' saldo.
+        ''' </summary>
+        Public Sub RegistrarVenta(venta As Venta)
+            If venta Is Nothing Then Exit Sub
             If Not EstaAbierta() Then Exit Sub
             Datos.Caja.Movimientos.Add(New MovimientoCaja With {
                 .Tipo = MovimientoCaja.TipoVenta,
-                .Monto = pedido.Total,
-                .Descripcion = "Pedido N. " & pedido.ID,
-                .Usuario = Datos.UsuarioActualNombre()
+                .Monto = venta.Total,
+                .Descripcion = "Venta " & venta.Numero,
+                .Usuario = Datos.UsuarioActualNombre(),
+                .VentaID = venta.ID
             })
         End Sub
 
         ''' <summary>
-        ''' Da de baja la venta de un pedido cancelado. La busca por el numero de pedido,
-        ''' asi que cancelar dos veces no descuenta dos veces.
+        ''' Da de baja el cobro de una venta anulada. Busca por id y no por texto, asi
+        ''' que anular dos veces no descuenta dos veces y nunca toca el movimiento de
+        ''' otra venta.
         ''' </summary>
-        Public Sub RevertirVenta(pedido As Pedido)
+        Public Sub RevertirVenta(venta As Venta)
             If Datos.Caja Is Nothing Then Exit Sub
-            Dim marca = "Pedido N. " & pedido.ID
+            If venta Is Nothing Then Exit Sub
             Dim movimiento = Datos.Caja.Movimientos.LastOrDefault(
-                Function(m) m.Tipo = MovimientoCaja.TipoVenta AndAlso m.Descripcion = marca)
+                Function(m) m.Tipo = MovimientoCaja.TipoVenta AndAlso m.VentaID = venta.ID)
             If movimiento IsNot Nothing Then Datos.Caja.Movimientos.Remove(movimiento)
         End Sub
 

@@ -7,16 +7,18 @@ Namespace CafeteriaOS
     ''' Regla unica de stock del sistema.
     '''
     ''' El stock SOLO cambia en tres momentos:
-    '''   1. al confirmar un pedido (descuenta),
-    '''   2. al cancelar un pedido ya confirmado (restaura),
+    '''   1. al confirmar una venta (descuenta),
+    '''   2. al anular una venta ya confirmada (restaura),
     '''   3. desde el modulo de stock (ajuste manual).
     '''
     ''' Armar o descartar un pedido que aun no se confirmo nunca toca el stock, por eso
-    ''' cancelar un pedido en curso no suma unidades de más.
+    ''' cancelar un pedido en curso no suma unidades de más. El descuento opera sobre la
+    ''' Venta y no sobre el Pedido justamente por eso: lo que toca el deposito es el
+    ''' hecho economico, no el borrador.
     '''
-    ''' Descontar y restaurar reciben el Pedido, no la lista de items, porque el pedido
-    ''' guarda la marca de si su stock ya fue descontado. Sin esa marca, cancelar dos veces
-    ''' el mismo pedido devolvia el doble.
+    ''' Descontar y restaurar reciben la Venta, no la lista de items, porque la venta
+    ''' guarda la marca de si su stock ya fue descontado. Sin esa marca, anular dos veces
+    ''' la misma venta devolvia el doble.
     ''' </summary>
     Public Module StockService
 
@@ -38,7 +40,7 @@ Namespace CafeteriaOS
         End Function
 
         ''' <summary>
-        ''' Productos que el pedido pide y el deposito no tiene, con el detalle de cuanto
+        ''' Productos que la venta pide y el deposito no tiene, con el detalle de cuanto
         ''' falta.
         '''
         ''' Se consulta ANTES de cobrar. Antes el descuento usaba Math.Max(0, ...): si el
@@ -46,39 +48,39 @@ Namespace CafeteriaOS
         ''' completa como si hubiera salido todo. El faltante quedaba escondido y nadie
         ''' se enteraba hasta ver el historial.
         ''' </summary>
-        Public Function Faltantes(pedido As Pedido) As List(Of String)
+        Public Function Faltantes(venta As Venta) As List(Of String)
             Dim problemas As New List(Of String)
-            If pedido Is Nothing OrElse pedido.Items Is Nothing Then Return problemas
+            If venta Is Nothing OrElse venta.Items Is Nothing Then Return problemas
 
-            For Each item In pedido.Items
+            For Each item In venta.Items
                 If item.Cantidad > item.Producto.Stock Then
-                    problemas.Add(item.Producto.Nombre & ": pide " & item.Cantidad &
+                    problemas.Add(item.ProductoNombre & ": pide " & item.Cantidad &
                                   " y hay " & item.Producto.Stock)
                 End If
             Next
             Return problemas
         End Function
 
-        ''' <summary>Si el pedido se puede cobrar con lo que hay en el deposito.</summary>
-        Public Function HayStock(pedido As Pedido) As Boolean
-            Return Faltantes(pedido).Count = 0
+        ''' <summary>Si la venta se puede cobrar con lo que hay en el deposito.</summary>
+        Public Function HayStock(venta As Venta) As Boolean
+            Return Faltantes(venta).Count = 0
         End Function
 
         ''' <summary>
-        ''' Aplicar al confirmar. Deja el stock en el valor real pedido y deja el pedido
-        ''' marcado como descontado, para que un cancel posterior sepa que hay que devolver
-        ''' esas unidades.
+        ''' Aplicar al confirmar. Deja el stock en el valor real vendido y deja la venta
+        ''' marcada como descontada, para que una anulacion posterior sepa que hay que
+        ''' devolver esas unidades.
         '''
         ''' Si el deposito no alcanza NO se descuenta a medias y avisa con el detalle: es
         ''' preferible no cobrar a dejar el stock en cero con unidades que nunca salieron.
         ''' Si el asiento del movimiento falla, se devuelve el stock ya descontado, para
         ''' que no quede una operacion sin registro.
         ''' </summary>
-        Public Sub Descontar(pedido As Pedido)
-            If pedido Is Nothing OrElse pedido.Items Is Nothing Then Return
-            If pedido.StockDescontado Then Return
+        Public Sub Descontar(venta As Venta)
+            If venta Is Nothing OrElse venta.Items Is Nothing Then Return
+            If venta.StockDescontado Then Return
 
-            Dim problemas = Faltantes(pedido)
+            Dim problemas = Faltantes(venta)
             If problemas.Count > 0 Then
                 Throw New InvalidOperationException(
                     "No hay stock suficiente: " & String.Join("; ", problemas))
@@ -86,11 +88,11 @@ Namespace CafeteriaOS
 
             Dim aplicado As New List(Of Tuple(Of Producto, Integer))
             Try
-                For Each item In pedido.Items
+                For Each item In venta.Items
                     item.Producto.Stock -= item.Cantidad
                     aplicado.Add(Tuple.Create(item.Producto, item.Cantidad))
                 Next
-                MovimientoStockService.RegistrarVenta(pedido)
+                MovimientoStockService.RegistrarVenta(venta)
             Catch
                 For Each par In aplicado
                     par.Item1.Stock += par.Item2
@@ -98,28 +100,29 @@ Namespace CafeteriaOS
                 Throw
             End Try
 
-            pedido.StockDescontado = True
+            venta.StockDescontado = True
         End Sub
 
         ''' <summary>
-        ''' Aplicar al cancelar un pedido que ya habia descontado stock. Si el pedido nunca
-        ''' se desconto no hace nada: armar y descartar un pedido en curso no toca el stock.
-        ''' Cancelar dos veces tampoco suma unidades de mas, porque el pedido queda sin la
-        ''' marca de descuento.
+        ''' Aplicar al anular una venta que ya habia descontado stock. Si la venta nunca
+        ''' se desconto no hace nada: armar y descartar un pedido en curso no toca el
+        ''' stock. Anular dos veces tampoco suma unidades de mas, porque la venta queda sin
+        ''' la marca de descuento.
         '''
         ''' Igual que al descontar, si el asiento falla se deshace la devolucion: no puede
         ''' quedar el stock repuesto sin el movimiento que lo explique.
         ''' </summary>
-        Public Sub Restaurar(pedido As Pedido)
-            If Not pedido.StockDescontado Then Return
+        Public Sub Restaurar(venta As Venta)
+            If venta Is Nothing Then Return
+            If Not venta.StockDescontado Then Return
 
             Dim aplicado As New List(Of Tuple(Of Producto, Integer))
             Try
-                For Each item In pedido.Items
+                For Each item In venta.Items
                     item.Producto.Stock += item.Cantidad
                     aplicado.Add(Tuple.Create(item.Producto, item.Cantidad))
                 Next
-                MovimientoStockService.RegistrarCancelacion(pedido)
+                MovimientoStockService.RegistrarCancelacion(venta)
             Catch
                 For Each par In aplicado
                     par.Item1.Stock -= par.Item2
@@ -127,7 +130,7 @@ Namespace CafeteriaOS
                 Throw
             End Try
 
-            pedido.StockDescontado = False
+            venta.StockDescontado = False
         End Sub
 
         ''' <summary>

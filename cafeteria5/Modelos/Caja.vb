@@ -11,6 +11,17 @@ Namespace CafeteriaOS
         Public Property FechaHora As DateTime = DateTime.Now
         Public Property Usuario As String
 
+        ''' <summary>
+        ''' Venta que originó el movimiento, cuando lo hubo. Cero para apertura, egreso
+        ''' y cierre.
+        '''
+        ''' Se guarda el id y no solo la Descripcion porque el texto es para que lo lea
+        ''' una persona: dos ventas pueden coincidir en la descripcion y entonces el
+        ''' movimiento de una termina revocando el de la otra al anular. Con el id el
+        ''' vinculo es exacto.
+        ''' </summary>
+        Public Property VentaID As Integer
+
         Public Const TipoApertura As String = "Apertura"
         Public Const TipoVenta As String = "Venta"
         Public Const TipoEgreso As String = "Egreso"

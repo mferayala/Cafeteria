@@ -11,7 +11,7 @@ Namespace CafeteriaOS
         Inherits Form
 
         Private total As Decimal
-        Private resultado As MetodoPago
+        Private resultado As ResultadoCobro
         Private cobrado As Boolean
 
         Private WithEvents btnCobrar As Button
@@ -32,7 +32,7 @@ Namespace CafeteriaOS
             MostrarTotal()
         End Sub
 
-        Public Shared Function Pedir(total As Decimal) As MetodoPago
+        Public Shared Function Pedir(total As Decimal) As ResultadoCobro
             Using f As New CobroForm(total)
                 If f.ShowDialog() <> DialogResult.OK OrElse Not f.cobrado Then
                     Return Nothing
@@ -43,9 +43,10 @@ Namespace CafeteriaOS
 
         Private Sub btnCobrar_Click(sender As Object, e As EventArgs) Handles btnCobrar.Click
             Dim medio = DirectCast(cmbPago.SelectedItem, String)
+            Dim esEfectivo = medio = MetodoPago.Efectivo.ToString()
+            Dim entregado As Decimal
 
-            If medio = MetodoPago.Efectivo.ToString() Then
-                Dim entregado As Decimal
+            If esEfectivo Then
                 If Not Decimal.TryParse(txtEntregado.Text, entregado) OrElse entregado < total Then
                     MessageBox.Show("El importe entregado no alcanza para cubrir el total.",
                                     "Cobro", MessageBoxButtons.OK, MessageBoxIcon.Warning)
@@ -55,7 +56,13 @@ Namespace CafeteriaOS
                 End If
             End If
 
-            resultado = DirectCast([Enum].Parse(GetType(MetodoPago), medio), MetodoPago)
+            ' El efectivo se lleva puesto con el medio de pago: si no queda en el
+            ' resultado, la venta no puede saber cuanto entro ni cuanto se devolvio.
+            resultado = New ResultadoCobro With {
+                .MetodoPago = DirectCast([Enum].Parse(GetType(MetodoPago), medio), MetodoPago),
+                .Total = total,
+                .EfectivoRecibido = If(esEfectivo, entregado, 0D)
+            }
             cobrado = True
             DialogResult = DialogResult.OK
             Close()

@@ -52,28 +52,29 @@ Namespace CafeteriaOS
         End Function
 
         ''' <summary>
-        ''' Una venta descuenta una unidad por cada linea del pedido. La recibe
-        ''' StockService al confirmar, y queda firmada con el numero del pedido.
+        ''' Una venta descuenta una unidad por cada linea. La recibe StockService al
+        ''' confirmar, y queda firmada con el numero de la venta, no con el del pedido:
+        ''' una venta de mostrador no tiene pedido asociado.
         ''' </summary>
-        Public Sub RegistrarVenta(pedido As Pedido)
-            If pedido Is Nothing Then Return
-            For Each item In pedido.Items
+        Public Sub RegistrarVenta(venta As Venta)
+            If venta Is Nothing Then Return
+            For Each item In venta.Items
                 Registrar(item.Producto, -item.Cantidad, TipoMovimientoStock.Venta,
-                          "POS", pedido.ID, Datos.UsuarioActualNombre(),
-                          "Venta del pedido N. " & pedido.ID)
+                          "POS", venta.ID, Datos.UsuarioActualNombre(),
+                          "Venta " & venta.Numero)
             Next
         End Sub
 
         ''' <summary>
-        ''' Cancelar una venta devuelve las unidades. Solo se asienta si el pedido
-        ''' realmente habia descontado stock: cancelar dos veces no genera dos devoluciones.
+        ''' Anular una venta devuelve las unidades. Solo se asienta si la venta
+        ''' realmente habia descontado stock: anular dos veces no genera dos devoluciones.
         ''' </summary>
-        Public Sub RegistrarCancelacion(pedido As Pedido)
-            If pedido Is Nothing OrElse Not pedido.StockDescontado Then Return
-            For Each item In pedido.Items
+        Public Sub RegistrarCancelacion(venta As Venta)
+            If venta Is Nothing OrElse Not venta.StockDescontado Then Return
+            For Each item In venta.Items
                 Registrar(item.Producto, item.Cantidad, TipoMovimientoStock.Cancelacion,
-                          "POS", pedido.ID, Datos.UsuarioActualNombre(),
-                          "Cancelacion del pedido N. " & pedido.ID)
+                          "POS", venta.ID, Datos.UsuarioActualNombre(),
+                          "Anulacion de la venta " & venta.Numero)
             Next
         End Sub
 

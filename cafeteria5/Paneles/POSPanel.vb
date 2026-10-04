@@ -519,6 +519,18 @@ Namespace CafeteriaOS
 
         #Region "Registro y cobro"
 
+        ''' <summary>
+        ''' Confirma la venta del pedido en curso.
+        '''
+        ''' El pedido en curso sigue siendo un borrador: se puede cambiar, cancelar o
+        ''' descartar sin dejar rastro. Lo que se confirma es una Venta, que es un hecho
+        ''' economico con numero propio y con los precios congelados.
+        '''
+        ''' El borrador NO se registra como Pedido. Una venta de mostrador no tiene por que
+        ''' pasar por el tablero de preparacion: si el modulo Pedidos esta apagado, o
+        ''' simplemente nadie lo esta mirando, la venta igual tiene que quedar cobrada y
+        ''' con el stock descontado.
+        ''' </summary>
         Private Sub RegistrarPedido()
             If pedidoEnCurso.Items.Count = 0 Then
                 MessageBox.Show("Agrega al menos un producto al pedido.", "Pedido",
@@ -526,10 +538,20 @@ Namespace CafeteriaOS
                 Return
             End If
 
-            ' Se revisa el deposito ANTES de abrir el cobro. Si el stock no alcanza
-            ' se avisa y se corta: antes se cobraba la venta completa y el stock
-            ' terminaba en cero con unidades que en realidad nunca salieron.
-            Dim faltantes = StockService.Faltantes(pedidoEnCurso)
+            ' La venta se arma antes de cobrar para poder revisar el deposito sobre el
+            ' objeto real que despues se va a confirmar. Si el stock no alcanza se avisa
+            ' y se corta sin abrir el cobro: antes se cobraba la venta completa y el
+            ' stock terminaba en cero con unidades que en realidad nunca salieron.
+            Dim venta As Venta = Nothing
+            Try
+                venta = VentaService.Crear(pedidoEnCurso)
+            Catch ex As Exception
+                MessageBox.Show(ex.Message, "Venta", MessageBoxButtons.OK,
+                                MessageBoxIcon.Warning)
+                Return
+            End Try
+
+            Dim faltantes = StockService.Faltantes(venta)
             If faltantes.Count > 0 Then
                 MessageBox.Show("No hay stock suficiente:" & vbCrLf &
                                 String.Join(vbCrLf, faltantes),
@@ -540,41 +562,36 @@ Namespace CafeteriaOS
 
             If Not AsegurarCajaAbierta() Then Return
 
-            Dim pago = CobroForm.Pedir(pedidoEnCurso.Total)
-            If pago = Nothing Then Return
+            Dim cobro = CobroForm.Pedir(venta.Total)
+            If cobro Is Nothing Then Return
 
             pedidoEnCurso.NombreCliente = txtCliente.Text.Trim()
             pedidoEnCurso.TelefonoCliente = ClienteService.NormalizarTelefono(txtTelefono.Text)
-            pedidoEnCurso.MetodoPago = pago
+            pedidoEnCurso.MetodoPago = cobro.MetodoPago
             pedidoEnCurso.Mesa = If(pedidoEnCurso.TipoServicio = TipoServicio.EnElLocal, txtMesa.Text.Trim(), String.Empty)
 
-            ' Unico punto donde baja el stock. Todo lo que viene despues puede
-            ' fallar, asi que va en un solo bloque: si algo se rompe despues de
-            ' descontar, el stock se devuelve y la venta no queda cobrada a medias.
+            ' El nombre y el telefono se leen del carrito, que es donde el usuario los
+            ' escribio: la venta ya habia quedado con vacio al armarla antes del cobro.
+            venta = VentaService.Crear(pedidoEnCurso, cobro)
+
             Try
-                StockService.Descontar(pedidoEnCurso)
+                ' Unico punto donde nace una venta y donde baja el stock. Confirmar
+                ' se deshace solo si algo falla: devuelve el stock, da de baja el
+                ' movimiento de caja y saca la venta del historial, para que no
+                ' exista una venta cobrada sin los productos que la justifican.
+                VentaService.Confirmar(venta)
 
-                Datos.RegistrarPedido(pedidoEnCurso)
-                ClienteService.RegistrarOActualizar(pedidoEnCurso.NombreCliente, pedidoEnCurso.TelefonoCliente, pedidoEnCurso)
-
-                CajaService.RegistrarVenta(pedidoEnCurso)
+                ClienteService.RegistrarOActualizar(venta.ClienteNombre,
+                                                    venta.ClienteTelefono, venta)
             Catch ex As Exception
-                Try
-                    StockService.Restaurar(pedidoEnCurso)
-                Catch
-                    ' Si ni la devolucion se puede asentar, el stock quedo a mano
-                    ' y el movimiento tampoco: se avisa para que quede a la vista.
-                End Try
-
                 MessageBox.Show("No se pudo registrar la venta:" & vbCrLf & ex.Message,
                                 "Venta", MessageBoxButtons.OK, MessageBoxIcon.Error)
                 Return
             End Try
 
-            Dim registrado = pedidoEnCurso
             NuevoPedido()
 
-            Using f As New TicketForm(TicketService.ConstruirTicket(registrado), "Ticket del pedido N. " & registrado.ID)
+            Using f As New TicketForm(TicketService.ConstruirTicket(venta), "Ticket de la venta " & venta.Numero)
                 f.ShowDialog()
             End Using
 

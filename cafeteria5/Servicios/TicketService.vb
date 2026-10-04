@@ -61,6 +61,47 @@ Namespace CafeteriaOS
                    "Gracias por su visita" & vbCrLf
         End Function
 
+        ''' <summary>
+        ''' Ticket de una venta. Imprime el numero de venta, que es el identificador con
+        ''' el que se busca en el historial y en el corte de caja.
+        '''
+        ''' Las lineas salen del snapshot congelado, no del producto vivo: si el nombre o
+        ''' el precio del producto cambiaron despues, el ticket viejo tiene que seguir
+        ''' diciendo lo que se cobro ese dia.
+        ''' </summary>
+        Public Function ConstruirTicket(venta As Venta) As String
+            Dim s As New StringBuilder()
+            s.AppendLine("=== VENTA " & venta.Numero & " ===")
+            s.AppendLine(venta.FechaHora.ToString("dd/MM/yyyy HH:mm"))
+            If venta.EsDeLocal Then
+                s.AppendLine("Mesa: " & If(String.IsNullOrWhiteSpace(venta.Mesa), "sin asignar", venta.Mesa))
+            End If
+            s.AppendLine("Cliente: " & If(String.IsNullOrWhiteSpace(venta.ClienteNombre), "Mostrador", venta.ClienteNombre))
+            s.AppendLine("--------------------------------")
+
+            For Each item In venta.Items
+                Dim linea = "  " & item.Cantidad.ToString() & " x " & item.ProductoNombre
+                If Not String.IsNullOrWhiteSpace(item.Especificaciones) Then
+                    linea &= " (" & item.Especificaciones & ")"
+                End If
+                s.AppendLine(linea)
+            Next
+
+            s.AppendLine("--------------------------------")
+            s.AppendLine("Subtotal: " & venta.Subtotal.ToString("C"))
+            If venta.Descuento > 0D Then
+                s.AppendLine("Descuento: -" & venta.Descuento.ToString("C"))
+            End If
+            s.AppendLine("TOTAL: " & venta.Total.ToString("C"))
+            s.AppendLine("Pago: " & venta.MetodoPago.ToString())
+            If venta.EfectivoComoMetodo Then
+                s.AppendLine("Recibido: " & venta.EfectivoRecibido.ToString("C") &
+                             "   Cambio: " & venta.Cambio.ToString("C"))
+            End If
+            s.AppendLine("Gracias por su visita")
+            Return s.ToString()
+        End Function
+
         ''' <summary>Ticket de cocina: grande, sin precios.</summary>
         Public Function ConstruirTicketCocina(pedido As Pedido) As String
             Dim s As New StringBuilder()

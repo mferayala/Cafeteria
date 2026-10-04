@@ -33,6 +33,15 @@ Namespace CafeteriaOS
         Public Property MotivoCancelacion As String
 
         ''' <summary>
+        ''' Venta que confirmo este pedido, o cero si todavia no se cobro.
+        '''
+        ''' El vinculo va del Pedido hacia la Venta y no al reves: el punto de venta
+        ''' crea ventas y no necesita saber de ningun pedido. Un pedido que se confirma
+        ''' apuntando a su venta es el que se puede anular desde el tablero.
+        ''' </summary>
+        Public Property VentaID As Integer
+
+        ''' <summary>
         ''' Marca que a este pedido ya se le desconto stock al confirmarse. La deja en True
         ''' StockService.Descontar y en False StockService.Restaurar, para que restaurar dos
         ''' veces el mismo pedido no sume unidades de mas.

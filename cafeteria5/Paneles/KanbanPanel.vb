@@ -217,10 +217,14 @@ Namespace CafeteriaOS
                                   "Cancelar pedido", "Devolucion")
             If motivo Is Nothing Then Return
 
-            ' Un pedido confirmado habia descontado stock y habia registrado su venta: se
-            ' revierte todo. Si nunca se confirmo, StockService.Restaurar no hace nada.
-            StockService.Restaurar(actual)
-            CajaService.RevertirVenta(actual)
+            ' Si el pedido llego a cobrarse, lo que se anula es la Venta: la venta es la
+            ' que descontó el stock y la que tiene el movimiento en caja, y anularla deja
+            ' las dos cosas asentadas. Si el pedido nunca se cobro, no hay venta que
+            ' anular y solo queda la baja en el tablero.
+            Dim venta = VentaService.Buscar(actual.VentaID)
+            If venta IsNot Nothing Then
+                VentaService.Anular(venta, motivo)
+            End If
 
             actual.Estado = EstadoPedido.Cancelado
             actual.MotivoCancelacion = motivo
