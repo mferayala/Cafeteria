@@ -227,13 +227,16 @@ Namespace CafeteriaOS
             Return DateTime.Today.AddDays(offset)
         End Function
 
-        ''' <summary>Categorias del catalogo, en el orden en que aparecen, siempre con "Todos" al principio.</summary>
+        ''' <summary>Categorias del catalogo, con "todas" al principio. El texto del marcador lo define ProductoService.</summary>
+        ''' <summary>
+        ''' Categorias con productos, con "todas" primero.
+        '''
+        ''' Delega en ProductoService: antes esta lista se armaba con List.Contains,
+        ''' que distingue mayusculas y no dejaba fuera las categorias vacias, y el
+        ''' POS terminaba mostrando una lista distinta de la del ingreso.
+        ''' </summary>
         Public Function CategoriasDeProductos() As List(Of String)
-            Dim categorias As New List(Of String) From {"Todos"}
-            For Each p In Datos.ListaProductos
-                If Not categorias.Contains(p.Categoria) Then categorias.Add(p.Categoria)
-            Next
-            Return categorias
+            Return ProductoService.CategoriasParaFiltrar()
         End Function
 
     End Module

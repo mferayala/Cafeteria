@@ -203,6 +203,48 @@ Namespace CafeteriaOS
                    Si(p.CodigoBarra, "").ToLowerInvariant().Contains(texto)
         End Function
 
+        ''' Texto del filtro que significa "sin filtro". Vive aca y no en cada pantalla
+        ''' porque POS e Ingreso usaban "Todos" y "(todas)" por separado: dos textos
+        ''' distintos para lo mismo, y con el POS mostrando una categoria y el Ingreso
+        ''' otra.
+        ''' </summary>
+        Public Const Todas As String = "(todas)"
+
+        ''' Categorias para armar un filtro, con la opcion de ver todas primero.
+        ''' </summary>
+        Public Function CategoriasParaFiltrar() As List(Of String)
+            Dim lista As List(Of String) = New List(Of String)
+            lista.Add(Todas)
+            lista.AddRange(Categorias())
+            Return lista
+        End Function
+
+        ''' Traduce el texto elegido en el filtro a la categoria real, o a cadena
+        ''' vacia cuando el filtro estaba en "todas".
+        ''' </summary>
+        Public Function CategoriaDelFiltro(texto As String) As String
+            Dim cat = Si(texto, "").Trim()
+            If cat.Equals(Todas, StringComparison.OrdinalIgnoreCase) Then Return ""
+            Return cat
+        End Function
+
+        ''' <summary>
+        ''' Un producto pertenece a la categoria del filtro. La comparacion no
+        ''' distingue mayusculas: si el filtro muestra "Bebidas" y el producto tiene
+        ''' "bebidas", el filtro lo escondia y el usuario creia que no existia.
+        '''
+        ''' El parametro no se llama categoriaDelFiltro: VB no distingue mayusculas, asi
+        ''' que con ese nombre tapaba a la funcion CategoriaDelFiltro que se llama justo
+        ''' adentro, y el error aparecia mas abajo, en el End Function.
+        ''' </summary>
+        Public Function PerteneceACategoria(producto As Producto, categoriaElegida As String) As Boolean
+            Dim cat = CategoriaDelFiltro(categoriaElegida)
+            If cat.Length = 0 Then Return True
+            If producto Is Nothing Then Return False
+            Return Si(producto.Categoria, "").Trim().Equals(cat,
+                                                            StringComparison.CurrentCultureIgnoreCase)
+        End Function
+
         ''' <summary>Categorias que efectivamente tienen productos, sin repetir.</summary>
         Public Function Categorias() As List(Of String)
             Return Datos.ListaProductos.

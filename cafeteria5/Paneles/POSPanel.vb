@@ -285,16 +285,16 @@ Namespace CafeteriaOS
         End Sub
 
         Private Sub CargarCategorias()
-            Dim actual = If(cmbCategoria.SelectedItem?.ToString(), "Todos")
+            Dim actual = If(cmbCategoria.SelectedItem?.ToString(), ProductoService.Todas)
             cmbCategoria.Items.Clear()
-            cmbCategoria.Items.AddRange(DatosIniciales.CategoriasDeProductos().ToArray())
+            cmbCategoria.Items.AddRange(ProductoService.CategoriasParaFiltrar().ToArray())
             Dim indice = cmbCategoria.Items.IndexOf(actual)
             cmbCategoria.SelectedIndex = If(indice >= 0, indice, 0)
         End Sub
 
         Private Sub PintarCatalogo()
             Dim texto = If(txtBuscar.Text, String.Empty).Trim().ToLowerInvariant()
-            Dim categoria = If(cmbCategoria.SelectedItem?.ToString(), "Todos")
+            Dim categoria = ProductoService.CategoriaDelFiltro(cmbCategoria.SelectedItem?.ToString())
 
             flowProductos.SuspendLayout()
             While flowProductos.Controls.Count > 0
@@ -302,7 +302,7 @@ Namespace CafeteriaOS
             End While
 
             For Each producto In Datos.ListaProductos
-                Dim coincideCategoria = categoria = "Todos" OrElse producto.Categoria = categoria
+                Dim coincideCategoria = ProductoService.PerteneceACategoria(producto, categoria)
                 ' NombreCompleto ya junta marca, nombre y descripcion, asi que la
                 ' busqueda del POS cubre las tres sin repetir el criterio.
                 Dim coincideTexto = texto.Length = 0 OrElse

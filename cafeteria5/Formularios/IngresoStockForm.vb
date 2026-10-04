@@ -410,21 +410,17 @@ Namespace CafeteriaOS
 
         Private Sub CargarFiltros()
             cmbCategoria.Items.Clear()
-            cmbCategoria.Items.Add("(todas)")
-            For Each c In ProductoService.Categorias()
-                cmbCategoria.Items.Add(c)
-            Next
+            cmbCategoria.Items.AddRange(ProductoService.CategoriasParaFiltrar().ToArray())
             cmbCategoria.SelectedIndex = 0
 
             CargarSubcategorias()
         End Sub
 
         Private Sub CargarSubcategorias()
-            Dim categoria = SiTexto(cmbCategoria.SelectedItem)
-            If categoria = "(todas)" Then categoria = ""
+            Dim categoria = ProductoService.CategoriaDelFiltro(SiTexto(cmbCategoria.SelectedItem))
 
             cmbSubcategoria.Items.Clear()
-            cmbSubcategoria.Items.Add("(todas)")
+            cmbSubcategoria.Items.Add(ProductoService.Todas)
             For Each s In ProductoService.Subcategorias(categoria)
                 cmbSubcategoria.Items.Add(s)
             Next
@@ -438,10 +434,8 @@ Namespace CafeteriaOS
         Private Sub BuscarProducto(texto As String)
             If tablaCatalogo Is Nothing Then Return
 
-            Dim categoria = SiTexto(cmbCategoria.SelectedItem)
-            Dim subcategoria = SiTexto(cmbSubcategoria.SelectedItem)
-            If categoria = "(todas)" Then categoria = ""
-            If subcategoria = "(todas)" Then subcategoria = ""
+            Dim categoria = ProductoService.CategoriaDelFiltro(SiTexto(cmbCategoria.SelectedItem))
+            Dim subcategoria = ProductoService.CategoriaDelFiltro(SiTexto(cmbSubcategoria.SelectedItem))
 
             Dim encontrados = ProductoService.Buscar(texto, categoria, subcategoria)
 
