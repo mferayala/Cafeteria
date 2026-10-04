@@ -38,18 +38,66 @@ Namespace CafeteriaOS
         End Function
 
         ''' <summary>
+        ''' Productos que el pedido pide y el deposito no tiene, con el detalle de cuanto
+        ''' falta.
+        '''
+        ''' Se consulta ANTES de cobrar. Antes el descuento usaba Math.Max(0, ...): si el
+        ''' deposito no alcanzaba, el stock llegaba a cero igual y la venta se cobraba
+        ''' completa como si hubiera salido todo. El faltante quedaba escondido y nadie
+        ''' se enteraba hasta ver el historial.
+        ''' </summary>
+        Public Function Faltantes(pedido As Pedido) As List(Of String)
+            Dim problemas As New List(Of String)
+            If pedido Is Nothing OrElse pedido.Items Is Nothing Then Return problemas
+
+            For Each item In pedido.Items
+                If item.Cantidad > item.Producto.Stock Then
+                    problemas.Add(item.Producto.Nombre & ": pide " & item.Cantidad &
+                                  " y hay " & item.Producto.Stock)
+                End If
+            Next
+            Return problemas
+        End Function
+
+        ''' <summary>Si el pedido se puede cobrar con lo que hay en el deposito.</summary>
+        Public Function HayStock(pedido As Pedido) As Boolean
+            Return Faltantes(pedido).Count = 0
+        End Function
+
+        ''' <summary>
         ''' Aplicar al confirmar. Deja el stock en el valor real pedido y deja el pedido
         ''' marcado como descontado, para que un cancel posterior sepa que hay que devolver
         ''' esas unidades.
+        '''
+        ''' Si el deposito no alcanza NO se descuenta a medias y avisa con el detalle: es
+        ''' preferible no cobrar a dejar el stock en cero con unidades que nunca salieron.
+        ''' Si el asiento del movimiento falla, se devuelve el stock ya descontado, para
+        ''' que no quede una operacion sin registro.
         ''' </summary>
         Public Sub Descontar(pedido As Pedido)
-            For Each item In pedido.Items
-                item.Producto.Stock = Math.Max(0, item.Producto.Stock - item.Cantidad)
-            Next
+            If pedido Is Nothing OrElse pedido.Items Is Nothing Then Return
+            If pedido.StockDescontado Then Return
+
+            Dim problemas = Faltantes(pedido)
+            If problemas.Count > 0 Then
+                Throw New InvalidOperationException(
+                    "No hay stock suficiente: " & String.Join("; ", problemas))
+            End If
+
+            Dim aplicado As New List(Of Tuple(Of Producto, Integer))
             Try
+                For Each item In pedido.Items
+                    item.Producto.Stock -= item.Cantidad
+                    aplicado.Add(Tuple.Create(item.Producto, item.Cantidad))
+                Next
                 MovimientoStockService.RegistrarVenta(pedido)
             Catch
+                For Each par In aplicado
+                    par.Item1.Stock += par.Item2
+                Next
+                Throw
             End Try
+
             pedido.StockDescontado = True
         End Sub
 
@@ -58,16 +106,27 @@ Namespace CafeteriaOS
         ''' se desconto no hace nada: armar y descartar un pedido en curso no toca el stock.
         ''' Cancelar dos veces tampoco suma unidades de mas, porque el pedido queda sin la
         ''' marca de descuento.
+        '''
+        ''' Igual que al descontar, si el asiento falla se deshace la devolucion: no puede
+        ''' quedar el stock repuesto sin el movimiento que lo explique.
         ''' </summary>
         Public Sub Restaurar(pedido As Pedido)
             If Not pedido.StockDescontado Then Return
-            For Each item In pedido.Items
-                item.Producto.Stock += item.Cantidad
-            Next
+
+            Dim aplicado As New List(Of Tuple(Of Producto, Integer))
             Try
+                For Each item In pedido.Items
+                    item.Producto.Stock += item.Cantidad
+                    aplicado.Add(Tuple.Create(item.Producto, item.Cantidad))
+                Next
                 MovimientoStockService.RegistrarCancelacion(pedido)
             Catch
+                For Each par In aplicado
+                    par.Item1.Stock -= par.Item2
+                Next
+                Throw
             End Try
+
             pedido.StockDescontado = False
         End Sub
 
@@ -104,6 +163,11 @@ Namespace CafeteriaOS
                                                  OrigenDe(tipo), referenciaID,
                                                  usuario, observacion)
             Catch
+                ' El ajuste manual tiene que quedar asentado o no vale: si no se
+                ' puede guardar el movimiento se vuelve el deposito a como estaba y
+                ' el error sube, en vez de perder el cambio sin que nadie lo sepa.
+                producto.Stock = antes
+                Throw
             End Try
         End Sub
 
