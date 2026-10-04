@@ -13,6 +13,22 @@ Namespace CafeteriaOS
     End Enum
 
     ''' <summary>
+    ''' Si la venta esta pagada o todavia le falta dinero.
+    '''
+    ''' Es un eje APARTE del estado de la venta, y esa separacion es a proposito. Que una
+    ''' venta este pagada y que la mercaderia este lista son dos cosas sin relacion: un
+    ''' cliente que paga y se va tiene una venta pagada que no pasa por ninguna
+    ''' preparacion, y una venta fiada puede estar ya entregada y aun debiendo.
+    '''
+    ''' Por eso esto no va dentro de EstadoVenta: una venta anulada esta anulada haya sido
+    ''' pagada o no, y el estado de pago es lo que se settles despues con un pago nuevo.
+    ''' </summary>
+    Public Enum EstadoPago
+        Pagada
+        Pendiente
+    End Enum
+
+    ''' <summary>
     ''' Una linea de venta CONGELADA.
     '''
     ''' Guarda el nombre y el precio del producto en el momento de la venta, no una
@@ -67,6 +83,27 @@ Namespace CafeteriaOS
         ''' <summary>Efectivo entregado, solo cuando el pago fue en efectivo.</summary>
         Public Property EfectivoRecibido As Decimal
 
+        ''' <summary>
+        ''' Si esta pagada o fiada. Una venta a cuenta sigue confirmada y descuenta stock igual:
+        ''' la mercaderia sale del deposito, lo que falta es que la plata entre.
+        ''' </summary>
+        Public Property Pago As EstadoPago = EstadoPago.Pagada
+
+        ''' <summary>
+        ''' Que esta venta se armo a cuenta, se haya saldado o no.
+        '''
+        ''' Se guarda aparte del estado de pago porque hace falta para anular: si a una
+        ''' venta a cuenta ya le Pagaron una parte, anularla no puede devolverse sola,
+        ''' porque hay que decidir que pasa con esa plata. Sin este dato no se podria
+        ''' distinguir "nunca entro plata" de "entro y hay que devolverla".
+        ''' </summary>
+        Public Property FueACuenta As Boolean
+
+        ''' Cuanto se ha cobrado de esta venta. Va sumando con cada pago posterior, asi que una
+        ''' deuda se puede saldar en partes sin perder el rastro de cuanto se puso cada vez.
+        ''' </summary>
+        Public Property MontoPagado As Decimal
+
         Public Property Usuario As String
         Public Property Estado As EstadoVenta = EstadoVenta.Confirmada
 
@@ -93,6 +130,26 @@ Namespace CafeteriaOS
         Public ReadOnly Property Total As Decimal
             Get
                 Return Math.Max(0D, Subtotal - Descuento)
+            End Get
+        End Property
+
+        ''' <summary>Cuanto le queda deber al cliente de esta venta. Cero si esta pagada.</summary>
+        Public ReadOnly Property Saldo As Decimal
+            Get
+                Return Math.Max(0D, Total - MontoPagado)
+            End Get
+        End Property
+
+        Public ReadOnly Property EstaPagada As Boolean
+            Get
+                Return Pago = EstadoPago.Pagada OrElse Saldo <= 0D
+            End Get
+        End Property
+
+        ''' <summary>Si se puede intentar cobrar algo mas contra esta venta.</summary>
+        Public ReadOnly Property TieneSaldo As Boolean
+            Get
+                Return Not EstaAnulada AndAlso Saldo > 0D
             End Get
         End Property
 

@@ -26,6 +26,7 @@ Namespace CafeteriaOS
         Public Const TipoVenta As String = "Venta"
         Public Const TipoEgreso As String = "Egreso"
         Public Const TipoCierre As String = "Cierre"
+        Public Const TipoCobroDeuda As String = "CobroDeuda"
     End Class
 
     ''' <summary>
@@ -39,9 +40,33 @@ Namespace CafeteriaOS
         Public Property UsuarioApertura As String
         Public Property Movimientos As New List(Of MovimientoCaja)()
 
+        ''' <summary>
+        ''' Todo lo que entró por ventas, sin diferenciar como se cobró.
+        '''
+        ''' El cobro de una deuda a cuenta cuenta acá adentro. Es plata que entro en esta
+        ''' caja y por eso tiene que estar en el saldo: si quedara afuera, el cierre
+        ''' mostraria menos plata de la que hay en el cajon y el saldo nunca cuadraria.
+        ''' Para el reporte se los separa con TotalCobrosDeuda.
+        ''' </summary>
         Public ReadOnly Property TotalVentas As Decimal
             Get
-                Return Movimientos.Where(Function(m) m.Tipo = MovimientoCaja.TipoVenta).Sum(Function(m) m.Monto)
+                Return Movimientos.
+                    Where(Function(m) m.Tipo = MovimientoCaja.TipoVenta OrElse
+                                   m.Tipo = MovimientoCaja.TipoCobroDeuda).
+                    Sum(Function(m) m.Monto)
+            End Get
+        End Property
+
+        ''' <summary>
+        ''' Parte de TotalVentas que corresponde a cobrar deudas ya existentes. Sale de
+        ''' ahi y no de un filtro aparte para que sea imposible que las dos cosas digan
+        ''' numeros distintos.
+        ''' </summary>
+        Public ReadOnly Property TotalCobrosDeuda As Decimal
+            Get
+                Return Movimientos.
+                    Where(Function(m) m.Tipo = MovimientoCaja.TipoCobroDeuda).
+                    Sum(Function(m) m.Monto)
             End Get
         End Property
 

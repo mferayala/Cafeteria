@@ -36,6 +36,11 @@ Namespace CafeteriaOS
             ' ventas preparadas al mismo tiempo no salgan con el mismo numero.
             Dim numero = Datos.ReservarIdVenta()
 
+            ' Sin cobro todavia la venta se trata como pagada, que es el caso normal:
+            ' el POS siempre pasa por la pantalla de cobro antes de confirmar. Queda
+            ' pendiente solo cuando el cliente se lleva la mercaderia a cuenta.
+            Dim cobroAhora = cobro Is Nothing OrElse cobro.CobradoAhora
+
             Dim venta As New Venta With {
                 .ID = numero,
                 .Numero = "V-" & numero.ToString("0000"),
@@ -47,6 +52,8 @@ Namespace CafeteriaOS
                 .Descuento = pedido.Descuento,
                 .MetodoPago = If(cobro Is Nothing, pedido.MetodoPago, cobro.MetodoPago),
                 .EfectivoRecibido = If(cobro Is Nothing, 0D, cobro.EfectivoRecibido),
+                .Pago = If(cobroAhora, EstadoPago.Pagada, EstadoPago.Pendiente),
+                .FueACuenta = Not cobroAhora,
                 .Usuario = If(usuario, Datos.UsuarioActualNombre()),
                 .Estado = EstadoVenta.Confirmada
             }
@@ -64,6 +71,11 @@ Namespace CafeteriaOS
                     .Especificaciones = item.Especificaciones
                 })
             Next
+
+            ' MontoPagado se setea DESPUES de cargar las lineas, porque el total sale de
+            ' ellas: una venta pagada arranca con el total completo como cobrado, y una
+            ' a cuenta arranca en cero sin dejar nada pagado.
+            If cobroAhora Then venta.MontoPagado = venta.Total
 
             Return venta
         End Function
@@ -87,7 +99,10 @@ Namespace CafeteriaOS
             Try
                 Datos.RegistrarVenta(venta)
                 StockService.Descontar(venta)
-                CajaService.RegistrarVenta(venta)
+
+                ' A cuenta NO toca caja: la mercaderia sale del deposito pero la plata
+                ' todavia no entro. El movimiento aparece recien cuando se cobre.
+                If venta.EstaPagada Then CajaService.RegistrarVenta(venta)
             Catch
                 Try
                     CajaService.RevertirVenta(venta)
@@ -119,6 +134,17 @@ Namespace CafeteriaOS
             End If
             If venta.EstaAnulada Then Return
 
+            ' Anular una venta a cuenta que ya recibio plata no se puede hacer solo:
+            ' devolver el stock es facil, pero esa plata hay que devolvérsela al cliente
+            ' y eso es una decision, no un efecto secundario. Se frena acá para que
+            ' alguien la tome a mano en vez de que el sistema reinvente el dinero.
+            If venta.FueACuenta AndAlso venta.MontoPagado > 0D Then
+                Throw New InvalidOperationException(
+                    "La venta " & venta.Numero & " ya tiene " &
+                    venta.MontoPagado.ToString("C2") & " cobrados. " &
+                    "Anularla exige devolver esa plata al cliente.")
+            End If
+
             Try
                 StockService.Restaurar(venta)
                 CajaService.RevertirVenta(venta)
@@ -133,6 +159,66 @@ Namespace CafeteriaOS
             venta.AnuladaMotivo = If(String.IsNullOrWhiteSpace(motivo), "Sin motivo", motivo.Trim())
             venta.AnuladaUsuario = If(usuario, Datos.UsuarioActualNombre())
         End Sub
+
+        ''' <summary>
+        ''' Cobra parte o todo lo que falta de una venta a cuenta.
+        '''
+        ''' Acepta pagos parciales a proposito: un cliente puede saldar en dos visitas y
+        ''' cada pago queda asentado por separado en caja. Cuando el saldo llega a cero
+        ''' la venta pasa a Pagada sola, sin que nadie la toque a mano.
+        '''
+        ''' No se cobra una venta anulada ni una que ya esta saldada, ni se cobra mas de lo
+        ''' que debe: cada uno de esos casos tiraria un error que el que llama tiene que
+        ''' ver, no un ajuste silencioso.
+        ''' </summary>
+        Public Sub RegistrarPago(venta As Venta,
+                                 monto As Decimal,
+                                 Optional metodoPago As MetodoPago = MetodoPago.Efectivo,
+                                 Optional usuario As String = Nothing)
+
+            If venta Is Nothing Then
+                Throw New ArgumentNullException(NameOf(venta))
+            End If
+            If venta.EstaAnulada Then
+                Throw New InvalidOperationException("La venta " & venta.Numero & " esta anulada.")
+            End If
+            If monto <= 0D Then
+                Throw New InvalidOperationException("El importe a cobrar tiene que ser mayor a cero.")
+            End If
+            If Not venta.TieneSaldo Then
+                Throw New InvalidOperationException("La venta " & venta.Numero & " no tiene saldo pendiente.")
+            End If
+            If monto > venta.Saldo Then
+                Throw New InvalidOperationException(
+                    "El importe supera el saldo pendiente de " & venta.Saldo.ToString("C2") & ".")
+            End If
+
+            venta.MontoPagado += monto
+            venta.Pago = If(venta.Saldo <= 0D, EstadoPago.Pagada, EstadoPago.Pendiente)
+            venta.MetodoPago = metodoPago
+
+            ' El movimiento va por el importe cobrado, no por el total: una deuda
+            ' saldada en dos pagos suma en caja lo que realmente entro.
+            CajaService.RegistrarCobroDeuda(venta, monto, usuario)
+        End Sub
+
+        ''' <summary>
+        ''' Ventas que todavia tienen plata pendiente. Sin clave devuelve todas.
+        '''
+        ''' Las anuladas nunca aparecen: una venta que se dio de baja no genera deuda.
+        ''' </summary>
+        Public Function Pendientes(Optional claveCliente As String = Nothing) As List(Of Venta)
+            Dim lista = Datos.ListaVentas.Where(Function(v) v.TieneSaldo)
+            If Not String.IsNullOrWhiteSpace(claveCliente) Then
+                lista = lista.Where(Function(v) ClienteService.ClaveDe(v.ClienteNombre, v.ClienteTelefono) = claveCliente)
+            End If
+            Return lista.ToList()
+        End Function
+
+        ''' <summary>Total que debe un cliente en todas sus ventas pendientes.</summary>
+        Public Function DeudaDe(claveCliente As String) As Decimal
+            Return Pendientes(claveCliente).Sum(Function(v) v.Saldo)
+        End Function
 
         Public Function Listar(Optional soloConfirmadas As Boolean = False) As List(Of Venta)
             If soloConfirmadas Then

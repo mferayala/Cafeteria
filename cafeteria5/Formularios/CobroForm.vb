@@ -42,6 +42,21 @@ Namespace CafeteriaOS
         End Function
 
         Private Sub btnCobrar_Click(sender As Object, e As EventArgs) Handles btnCobrar.Click
+            ' A cuenta se resuelve antes de tocar el medio de pago: no hay medio de pago
+            ' que elegir ni efectivo que verificar, porque no se cobró nada.
+            If chkACuenta.Checked Then
+                resultado = New ResultadoCobro With {
+                    .MetodoPago = MetodoPago.Efectivo,
+                    .Total = total,
+                    .EfectivoRecibido = 0D,
+                    .CobradoAhora = False
+                }
+                cobrado = True
+                DialogResult = DialogResult.OK
+                Close()
+                Return
+            End If
+
             Dim medio = DirectCast(cmbPago.SelectedItem, String)
             Dim esEfectivo = medio = MetodoPago.Efectivo.ToString()
             Dim entregado As Decimal
@@ -61,7 +76,8 @@ Namespace CafeteriaOS
             resultado = New ResultadoCobro With {
                 .MetodoPago = DirectCast([Enum].Parse(GetType(MetodoPago), medio), MetodoPago),
                 .Total = total,
-                .EfectivoRecibido = If(esEfectivo, entregado, 0D)
+                .EfectivoRecibido = If(esEfectivo, entregado, 0D),
+                .CobradoAhora = True
             }
             cobrado = True
             DialogResult = DialogResult.OK
@@ -73,10 +89,38 @@ Namespace CafeteriaOS
             Close()
         End Sub
 
+        ''' <summary>
+        ''' Dejar a cuenta no es cobrar de otra forma: es NO cobrar. El medio de pago y
+        ''' el efectivo entregado se apagan porque no aplican, y el total pasa a verse
+        ''' como pendiente para que quede claro que la plata todavia no entró.
+        '''
+        ''' Un cliente que paga y se va nunca tilda esta casilla: para eso esta el cobro
+        ''' normal, que no deja deuda.
+        ''' </summary>
+        Private Sub chkACuenta_CheckedChanged()
+            Dim aCuenta = chkACuenta.Checked
+
+            cmbPago.Enabled = Not aCuenta
+            txtEntregado.Enabled = Not aCuenta AndAlso
+                                 DirectCast(cmbPago.SelectedItem, String) = MetodoPago.Efectivo.ToString()
+
+            If aCuenta Then
+                txtEntregado.Text = String.Empty
+                lblCambio.Text = "--"
+                lblCambio.ForeColor = Tema.TextoSec
+                btnCobrar.Text = "Dejar a cuenta"
+            Else
+                btnCobrar.Text = "Confirmar cobro"
+                MostrarTotal()
+            End If
+        End Sub
+
         Private Sub cmbPago_SelectedIndexChanged(sender As Object, e As EventArgs) Handles cmbPago.SelectedIndexChanged
+            If cmbPago.SelectedItem Is Nothing Then Exit Sub
+
             Dim esEfectivo = DirectCast(cmbPago.SelectedItem, String) = MetodoPago.Efectivo.ToString()
-            txtEntregado.Enabled = esEfectivo
-            If esEfectivo Then
+            txtEntregado.Enabled = esEfectivo AndAlso Not chkACuenta.Checked
+            If esEfectivo AndAlso Not chkACuenta.Checked Then
                 txtEntregado.SelectAll()
                 txtEntregado.Focus()
             Else

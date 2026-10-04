@@ -46,12 +46,39 @@ Namespace CafeteriaOS
         ''' </summary>
         Public Sub RegistrarVenta(venta As Venta)
             If venta Is Nothing Then Exit Sub
+            ' El control de si esta pagada vive ACA y no en quien llama: si queda solo
+            ' en VentaService.Confirmar, cualquier otro que asiente una venta a cuenta
+            ' sumaria a la caja plata que todavia no entro.
+            If Not venta.EstaPagada Then Exit Sub
             If Not EstaAbierta() Then Exit Sub
             Datos.Caja.Movimientos.Add(New MovimientoCaja With {
                 .Tipo = MovimientoCaja.TipoVenta,
                 .Monto = venta.Total,
                 .Descripcion = "Venta " & venta.Numero,
                 .Usuario = Datos.UsuarioActualNombre(),
+                .VentaID = venta.ID
+            })
+        End Sub
+
+        ''' <summary>
+        ''' Asienta el cobro de una deuda ya existente. Va en su propio tipo de movimiento
+        ''' y no como una venta mas: una venta a cuenta no es una venta, es el cobro de
+        ''' una venta anterior, y en el cierre de caja tienen que poder verse separadas.
+        '''
+        ''' El monto es el que se acaba de cobrar, no el total de la venta, para que una
+        ''' deuda saldada en varias cuotas sume en caja lo que realmente entro.
+        ''' </summary>
+        Public Sub RegistrarCobroDeuda(venta As Venta,
+                                       monto As Decimal,
+                                       Optional usuario As String = Nothing)
+            If venta Is Nothing OrElse Datos.Caja Is Nothing Then Exit Sub
+            If Not EstaAbierta() Then Exit Sub
+
+            Datos.Caja.Movimientos.Add(New MovimientoCaja With {
+                .Tipo = MovimientoCaja.TipoCobroDeuda,
+                .Monto = monto,
+                .Descripcion = "Cobro de " & venta.Numero & " (saldo)",
+                .Usuario = If(usuario, Datos.UsuarioActualNombre()),
                 .VentaID = venta.ID
             })
         End Sub

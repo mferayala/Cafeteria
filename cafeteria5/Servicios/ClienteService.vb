@@ -35,6 +35,30 @@ Namespace CafeteriaOS
                                         venta.MetodoPago, venta.FechaHora, venta.ID)
         End Function
 
+        ''' <summary>
+        ''' Clave con la que se identifica a un cliente. El telefono manda cuando existe;
+        ''' si no, se identifica por nombre. Vive en su propia funcion para que el mismo
+        ''' criterio se use al registrar una venta y al consultar las deudas: si cada uno
+        ''' calculara la clave por su cuenta, la deuda de un cliente no se encontraria.
+        ''' </summary>
+        Public Function ClaveDe(nombre As String, telefono As String) As String
+            Dim nombreLimpio = If(nombre, String.Empty).Trim()
+            Dim telLimpio = NormalizarTelefono(telefono)
+            Return If(telLimpio = SinTelefono,
+                      "N:" & nombreLimpio.ToLowerInvariant(),
+                      "T:" & telLimpio.ToLowerInvariant())
+        End Function
+
+        ''' <summary>
+        ''' Cuanto debe un cliente en total. Sale de las ventas pendientes, no de un
+        ''' contador propio: el contador se desincroniza apenas se anula una venta o se
+        ''' salda una deuda, y la deuda que muestra el sistema tiene que ser la misma que
+        ''' la suma de lo que cada venta dice que falta.
+        ''' </summary>
+        Public Function Deuda(clave As String) As Decimal
+            Return VentaService.DeudaDe(clave)
+        End Function
+
         Private Function RegistrarOActualizar(nombre As String,
                                               telefono As String,
                                               total As Decimal,
@@ -49,9 +73,7 @@ Namespace CafeteriaOS
                 Return Nothing
             End If
 
-            Dim clave = If(telLimpio = SinTelefono,
-                           "N:" & nombreLimpio.ToLowerInvariant(),
-                           "T:" & telLimpio.ToLowerInvariant())
+            Dim clave = ClaveDe(nombreLimpio, telLimpio)
 
             Dim cliente = Datos.ListaClientes.FirstOrDefault(Function(c) c.Clave = clave)
 

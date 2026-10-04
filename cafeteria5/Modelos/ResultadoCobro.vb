@@ -14,6 +14,26 @@ Namespace CafeteriaOS
         Public Property Total As Decimal
         Public Property EfectivoRecibido As Decimal
 
+        ''' <summary>
+        ''' False cuando el cliente se lleva la mercaderia y se lleva la deuda con ella.
+        ''' En ese caso no entra plata a la caja y el total queda pendiente.
+        ''' </summary>
+        Public Property CobradoAhora As Boolean = True
+
+        Public ReadOnly Property ACuenta As Boolean
+            Get
+                Return Not CobradoAhora
+            End Get
+        End Property
+
+        ''' <summary>Lo que efectivamente entra a la caja con este cobro.</summary>
+        Public ReadOnly Property Ingresado As Decimal
+            Get
+                If Not CobradoAhora Then Return 0D
+                Return Total
+            End Get
+        End Property
+
         ''' <summary>Lo que se devuelve al cliente. Siempre cero si no fue en efectivo.</summary>
         Public ReadOnly Property Cambio As Decimal
             Get

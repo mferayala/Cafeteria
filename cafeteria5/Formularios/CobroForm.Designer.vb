@@ -10,6 +10,7 @@ Namespace CafeteriaOS
         Private WithEvents cmbPago As ComboBox
         Private WithEvents txtEntregado As TextBox
         Private lblCambio As Label
+        Private chkACuenta As CheckBox
 
         Private Sub IniciarInterfaz()
             Text = "Cobrar pedido"
@@ -50,11 +51,23 @@ Namespace CafeteriaOS
             lblCambio.Dock = DockStyle.Fill
             lblCambio.TextAlign = ContentAlignment.MiddleRight
 
+            chkACuenta = New CheckBox With {
+                .Name = "chk.aCuenta",
+                .Dock = DockStyle.Fill,
+                .Text = "Dejar a cuenta (paga despues)",
+                .AutoSize = True,
+                .UseVisualStyleBackColor = True
+            }
+            chkACuenta.TabStop = True
+            chkACuenta.ForeColor = Tema.TextoPrinc
+            AddHandler chkACuenta.CheckedChanged, Sub() chkACuenta_CheckedChanged()
+
             cuerpo.Controls.AddRange(New Control() {
                 Etiqueta("Total a cobrar"), lblTotal,
                 Etiqueta("Medio de pago"), cmbPago,
                 Etiqueta("Entregado"), txtEntregado,
-                Etiqueta("Cambio"), lblCambio
+                Etiqueta("Cambio"), lblCambio,
+                New Label(), chkACuenta
             })
 
             btnCobrar = Tema.CrearBoton("Confirmar cobro", EstiloBoton.Exito, 150, 40)
