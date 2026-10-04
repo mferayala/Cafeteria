@@ -15,4 +15,13 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
 
+  <!--
+    Pruebas/ son tres proyectos aparte, cada uno con su propio punto de entrada. Si el
+    proyecto principal los compilara, tendria cuatro Mains y no arrancaria.
+  -->
+  <ItemGroup>
+    <Compile Remove="Pruebas\**" />
+    <None Include="Pruebas\**" />
+  </ItemGroup>
+
 </Project>

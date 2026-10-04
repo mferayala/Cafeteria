@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/Pruebas/">
+    <Project Path="Pruebas/Pruebas.Consola/Pruebas.Consola.vbproj" />
+    <Project Path="Pruebas/Pruebas.Geometria/Pruebas.Geometria.vbproj" />
+    <Project Path="Pruebas/Pruebas.Layout/Pruebas.Layout.vbproj" />
+  </Folder>
+  <Project Path="cafeteria5.vbproj" />
+</Solution>

@@ -9,14 +9,25 @@ Namespace CafeteriaOS
     ''' Guarda los ingresos de mercaderia en un archivo JSON del perfil del usuario.
     ''' Vive fuera de la carpeta del ejecutable a proposito: si viviera en la carpeta
     ''' del binario, recompilar el proyecto dejaria el historial vacio.
+    '''
+    ''' La carpeta se puede corrige con la variable CAFETERIAOS_DATOS. Las pruebas la
+    ''' usan para trabajar en una carpeta propia: antes escribian sobre el archivo real
+    ''' y lo borraban al arrancar, asi que cada corrida se comia el historial de
+    ''' ingresos de verdad del que estaba probando.
     ''' </summary>
     Public Module IngresoAlmacen
 
+        ''' <summary>Variable de entorno que corre la carpeta de datos.</summary>
+        Public Const VariableCarpeta As String = "CAFETERIAOS_DATOS"
+
         Public ReadOnly Property Ruta As String
             Get
-                Dim carpeta = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                    "CafeteriaOS")
+                Dim elegida = Environment.GetEnvironmentVariable(VariableCarpeta)
+                Dim carpeta = If(String.IsNullOrWhiteSpace(elegida),
+                                 Path.Combine(
+                                     Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                                     "CafeteriaOS"),
+                                 elegida)
                 Return Path.Combine(carpeta, "ingresos_stock.json")
             End Get
         End Property

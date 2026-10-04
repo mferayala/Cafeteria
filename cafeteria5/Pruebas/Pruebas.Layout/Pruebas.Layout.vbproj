@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Suite de pruebas. Compila el codigo real con Compile Include en vez de usar un
+    ProjectReference a proposito: asi una prueba ve exactamente los archivos que
+    ve la aplicacion, sin la salida de una biblioteca intermediaria de por medio.
+
+    No se agrega a cafeteria5.vbproj: el proyecto principal excluye Pruebas/ para no
+    compilar estos archivos dentro de la app, que tiene su propio punto de entrada.
+
+    Levanta los datos en una carpeta propia con CAFETERIAOS_DATOS, para no pisar el
+    historial de ingresos de quien esta probando.
+  -->
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <MyType>Empty</MyType>
+    <OptionExplicit>On</OptionExplicit>
+    <OptionStrict>On</OptionStrict>
+    <OptionInfer>On</OptionInfer>
+    <WarningLevel>4</WarningLevel>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <RootNamespace></RootNamespace>
+    <StartupObject>Prueba.Layout</StartupObject>
+    <Raiz>$(MSBuildThisFileDirectory)..\..\</Raiz>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="$(Raiz)AppConfig.vb" Link="AppConfig.vb" />
+    <Compile Include="$(Raiz)Datos.vb" Link="Datos.vb" />
+    <Compile Include="$(Raiz)DatosIniciales.vb" Link="DatosIniciales.vb" />
+    <Compile Include="$(Raiz)Enums.vb" Link="Enums.vb" />
+    <Compile Include="$(Raiz)Tema.vb" Link="Tema.vb" />
+    <Compile Include="$(Raiz)Modelos\*.vb" LinkBase="Modelos" />
+    <Compile Include="$(Raiz)Servicios\*.vb" LinkBase="Servicios" />
+    <Compile Include="$(Raiz)Utilidades\*.vb" LinkBase="Utilidades" />
+    <Compile Include="$(Raiz)Formularios\*.vb" LinkBase="Formularios" />
+    <Compile Include="$(Raiz)Paneles\*.vb" LinkBase="Paneles" />
+    <Compile Include="Layout.vb" />
+    <Compile Include="Cobro.vb" />
+  </ItemGroup>
+
+</Project>
