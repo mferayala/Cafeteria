@@ -230,11 +230,18 @@ Namespace CafeteriaOS
             If texto.Length = 0 Then Return String.Empty
 
             Dim categoria = Buscar(texto)
-            If categoria Is Nothing Then Return texto
+            If categoria Is Nothing Then
+                ' Una categoria nueva queda con la primera letra en mayuscula y el
+                ' resto en minuscula, que es como se ven en el catalogo.
+                Return FormatoDeCatalogo(texto)
+            End If
 
-            ' Una categoria nueva queda con la primera letra en mayuscula y el
-            ' resto en minuscula, que es como se ven en el catalogo.
-            Return FormatoDeCatalogo(texto)
+            ' Si ya existe se devuelve el nombre como esta guardado, no el texto
+            ' recibido reformateado: reformatear aqui volveria a crear la variante
+            ' que Normalizar existe para evitar. Si el catalogo tiene
+            ' "BEBIDAS SIN GAS" y el usuario escribe "bebidas sin gas", tiene que
+            ' quedar "BEBIDAS SIN GAS".
+            Return categoria.Nombre
         End Function
 
         Public Function NormalizarSubcategoria(nombreCategoria As String, nombre As String) As String
