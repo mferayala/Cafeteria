@@ -80,15 +80,18 @@ Namespace CafeteriaOS
             Dim btnNuevo = Tema.CrearBoton("+ Producto", EstiloBoton.Neutro, 130, 36)
             Dim btnEditar = Tema.CrearBoton("Editar producto", EstiloBoton.Neutro, 150, 36)
             Dim btnMovimientos = Tema.CrearBoton("Movimientos", EstiloBoton.Neutro, 140, 36)
+            Dim btnCategorias = Tema.CrearBoton("Categorias", EstiloBoton.Neutro, 140, 36)
             AddHandler btnMenos.Click, Sub(se, ev) Ajustar(-1)
             AddHandler btnReponer.Click, Sub(se, ev) Reponer()
             AddHandler btnIngresar.Click, Sub(se, ev) IngresarStock()
             AddHandler btnNuevo.Click, Sub(se, ev) NuevoProducto()
             AddHandler btnEditar.Click, Sub(se, ev) EditarProducto()
             AddHandler btnMovimientos.Click, Sub(se, ev) VerMovimientos()
+            AddHandler btnCategorias.Click, Sub(se, ev) VerCategorias()
 
             raiz.Controls.Add(UiKit.Botonera(btnMenos, btnReponer, btnIngresar,
-                                              btnNuevo, btnEditar, btnMovimientos), 0, 2)
+                                              btnNuevo, btnEditar, btnMovimientos,
+                                              btnCategorias), 0, 2)
             raiz.Controls.Add(ArmarDetalle(), 0, 3)
             Contenido.Controls.Add(raiz)
         End Sub
@@ -258,6 +261,23 @@ Namespace CafeteriaOS
         ''' Edicion del producto elegido. La lista se puede filtrar, asi que el
         ''' producto se toma de la fila seleccionada y no de la posicion.
         ''' </summary>
+        ''' <summary>
+        ''' Catalogo de categorias. Se abre desde aca porque es donde se cargan los
+        ''' productos: renombrar una categoria tiene que verse en la misma pantalla
+        ''' donde despues se eligen los productos.
+        ''' </summary>
+        Private Sub VerCategorias()
+            Dim rol = If(Datos.UsuarioActual Is Nothing, RolUsuario.Cocina, Datos.UsuarioActual.Rol)
+            If Not AutenticacionService.PuedeEditarConfiguracion(rol) Then
+                MessageBox.Show("Las categorias se administran desde una cuenta de administrador.",
+                                "Categorias", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+                Return
+            End If
+
+            CategoriasForm.Editar()
+            Refrescar()
+        End Sub
+
         Private Sub EditarProducto()
             Dim producto = ProductoSeleccionado()
             If producto Is Nothing Then

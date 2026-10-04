@@ -15,6 +15,10 @@ Namespace CafeteriaOS
         Public Sub Cargar()
             Datos.ListaProductos.Clear()
             Datos.ListaProductos.AddRange(Productos())
+            ' Las categorias searman del catalogo cargado: asi quedan una sola vez,
+            ' con la capitalizacion que se ve en pantalla, y sin duplicados por
+            ' mayusculas.
+            Datos.SembrarCategorias()
             Datos.ListaProveedores.Clear()
             Datos.ListaProveedores.AddRange(Proveedores())
             Datos.ListaClientes.Clear()

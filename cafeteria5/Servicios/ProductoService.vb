@@ -89,6 +89,8 @@ Namespace CafeteriaOS
             p.UnidadMedida = Si(Limpiar(p.UnidadMedida), "un").ToLowerInvariant()
             p.Atajo = Si(Limpiar(p.Atajo), "")
 
+            RegistrarCategoriaDelProducto(p)
+
             If p.ID = 0 Then
                 p.ID = Datos.SiguienteIdProducto()
                 Datos.ListaProductos.Add(p)
@@ -108,6 +110,38 @@ Namespace CafeteriaOS
             resultado.Producto = p
             Return resultado
         End Function
+
+        ''' <summary>
+        ''' Deja la categoria del producto anotada en el catalogo de categorias.
+        '''
+        ''' Si el nombre es nuevo, se crea la categoria: asi cargar un producto con
+        ''' "Lacteos" la deja disponible para los demas, sin tener que ir antes a
+        ''' administer categorias. Si ya existe una que solo se diferencia en
+        ''' mayusculas, se adoptan las mayusculas que ya usa el catalogo.
+        '''
+        ''' La subcategoria se agrega a esa categoria, y solo a esa: una subcategoria
+        ''' con el mismo nombre bajo otra categoria es una cosa distinta.
+        ''' </summary>
+        Private Sub RegistrarCategoriaDelProducto(p As Producto)
+            If p.Categoria.Length = 0 Then
+                If p.Subcategoria.Length > 0 Then p.Subcategoria = String.Empty
+                Return
+            End If
+
+            If Not CategoriaService.Existe(p.Categoria) Then
+                CategoriaService.Agregar(p.Categoria)
+            End If
+
+            p.Categoria = CategoriaService.Normalizar(p.Categoria)
+
+            If p.Subcategoria.Length > 0 Then
+                If Not CategoriaService.SubcategoriasDe(p.Categoria).Any(
+                    Function(s) s.Equals(p.Subcategoria, StringComparison.CurrentCultureIgnoreCase)) Then
+                    CategoriaService.AgregarSubcategoria(p.Categoria, p.Subcategoria)
+                End If
+                p.Subcategoria = CategoriaService.NormalizarSubcategoria(p.Categoria, p.Subcategoria)
+            End If
+        End Sub
 
         ''' <summary>
         ''' Copia los datos editables de un producto sobre el que ya esta en el
@@ -247,26 +281,18 @@ Namespace CafeteriaOS
 
         ''' <summary>Categorias que efectivamente tienen productos, sin repetir.</summary>
         Public Function Categorias() As List(Of String)
-            Return Datos.ListaProductos.
-                Select(Function(p) Si(p.Categoria, "").Trim()).
-                Where(Function(c) c.Length > 0).
-                Distinct(StringComparer.CurrentCultureIgnoreCase).
-                OrderBy(Function(c) c).
-                ToList()
+            Return CategoriaService.Todas().Select(Function(c) c.Nombre).ToList()
         End Function
 
-        ''' <summary>Subcategorias de una categoria. Sin categoria, las de todas.</summary>
+        ''' <summary>
+        ''' Subcategorias de una categoria. Sin categoria, las de todas.
+        '''
+        ''' Including las que usan los productos aunque no esten registradas: si un
+        ''' producto quedo con una subcategoria que nadie administro, el filtro la
+        ''' muestra igual y el usuario puede elegirla en vez de crear otra.
+        ''' </summary>
         Public Function Subcategorias(Optional categoria As String = "") As List(Of String)
-            Dim cat = Si(categoria, "").Trim()
-            Return Datos.ListaProductos.
-                Where(Function(p) cat.Length = 0 OrElse
-                               Si(p.Categoria, "").Trim().Equals(cat,
-                                                                 StringComparison.CurrentCultureIgnoreCase)).
-                Select(Function(p) Si(p.Subcategoria, "").Trim()).
-                Where(Function(s) s.Length > 0).
-                Distinct(StringComparer.CurrentCultureIgnoreCase).
-                OrderBy(Function(s) s).
-                ToList()
+            Return CategoriaService.SubcategoriasDe(Si(categoria, "").Trim())
         End Function
 
         ''' <summary>

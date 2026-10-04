@@ -15,6 +15,13 @@ Namespace CafeteriaOS
         Public ListaIngresos As New List(Of IngresoStock)()
         Public ListaMovimientos As New List(Of MovimientoStock)()
 
+        ''' <summary>
+        ''' Catalogo de categorias. Vive aparte de los productos para que se pueda
+        ''' crear una categoria antes de que tenga algo cargado, y para renombrarla
+        ''' una sola vez en lugar de producto por producto.
+        ''' </summary>
+        Public ListaCategorias As New List(Of Categoria)()
+
         '''Configuracion global del negocio (accesible para administradores).'''
         Public ConfigNegocio As New ConfiguracionNegocio()
 
@@ -73,6 +80,56 @@ Namespace CafeteriaOS
         Public Function SiguienteIdMovimiento() As Integer
             Return contadorMovimientos
         End Function
+
+        ''' <summary>
+        ''' Id para una categoria nueva. Uno mas del mayor que exista, igual que los
+        ''' productos, porque el catalogo tambien se arma con datos de ejemplo.
+        ''' </summary>
+        Public Function SiguienteIdCategoria() As Integer
+            Dim mayor = 0
+            For Each c In ListaCategorias
+                If c.ID > mayor Then mayor = c.ID
+            Next
+            Return mayor + 1
+        End Function
+
+        ''' <summary>
+        ''' Crea el catalogo de categorias a partir de los productos que ya existen.
+        '''
+        ''' No se duplican las que difieren solo en mayusculas y cada producto queda
+        ''' con la misma capitalizacion que la categoria creada, para que el filtro no
+        ''' muestre "Bebidas" y "bebidas" como dos cosas distintas.
+        ''' </summary>
+        Public Sub SembrarCategorias()
+            ListaCategorias.Clear()
+            For Each p In ListaProductos
+                Dim nombre = If(p.Categoria, "").Trim()
+                If nombre.Length = 0 Then Continue For
+
+                Dim categoria = CategoriaService.Buscar(nombre)
+                If categoria Is Nothing Then
+                    categoria = New Categoria With {
+                        .ID = SiguienteIdCategoria(),
+                        .Nombre = CategoriaService.FormatoDeCatalogo(nombre)
+                    }
+                    ListaCategorias.Add(categoria)
+                End If
+
+                If Not categoria.Nombre.Equals(p.Categoria.Trim(),
+                                               StringComparison.CurrentCultureIgnoreCase) Then
+                    p.Categoria = categoria.Nombre
+                End If
+
+                ' "sub" es palabra clave en VB: como nombre de variable rompe
+                ' el parseo con un error que no apunta a esta linea.
+                Dim subcat = If(p.Subcategoria, "").Trim()
+                If subcat.Length > 0 AndAlso
+                   Not categoria.Subcategorias.Any(
+                       Function(s) s.Equals(subcat, StringComparison.CurrentCultureIgnoreCase)) Then
+                    categoria.Subcategorias.Add(subcat)
+                End If
+            Next
+        End Sub
 
         Public Sub RegistrarMovimiento(m As MovimientoStock)
             If m Is Nothing Then Return
