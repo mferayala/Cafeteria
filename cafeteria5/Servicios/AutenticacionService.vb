@@ -42,6 +42,14 @@ Namespace CafeteriaOS
             Return rol = RolUsuario.Administrador
         End Function
 
+        ''' <summary>
+        ''' Margen, gastos e IVA son informacion del negocio: quien los ve puede
+        ''' saber cuanto se gana con cada producto. Solo el administrador.
+        ''' </summary>
+        Public Function PuedeEditarConfiguracion(rol As RolUsuario) As Boolean
+            Return rol = RolUsuario.Administrador
+        End Function
+
     End Module
 
 End Namespace

@@ -11,6 +11,9 @@ Namespace CafeteriaOS
 
         Public Sub New()
             IniciarInterfaz()
+            ' El designer deja el texto de diseno; el nombre real del negocio viene
+            ' de la configuracion, asi que se reemplaza despues de armar la pantalla.
+            lblTitulo.Text = Datos.ConfigNegocio.NombreParaMostrar().ToUpperInvariant()
             lblPista.Text = DatosIniciales.PistasDeLogin()
         End Sub
 

@@ -10,6 +10,7 @@ Namespace CafeteriaOS
         Private area As Panel
         Private lblMarca As Label
         Private lblUsuario As Label
+        Private WithEvents btnConfiguracion As Button
         Private WithEvents btnTema As Button
         Private WithEvents btnSalir As Button
 
@@ -108,9 +109,11 @@ Namespace CafeteriaOS
                 .Dock = DockStyle.Fill,
                 .Height = 40
             }
+            btnConfiguracion = Tema.CrearBoton("Configuracion", EstiloBoton.Neutro, 194, 36)
             btnTema = Tema.CrearBoton("Tema oscuro", EstiloBoton.Neutro, 194, 36)
             btnSalir = Tema.CrearBoton("Cerrar sesion", EstiloBoton.Peligro, 194, 36)
             lateral.Controls.Add(lblUsuario, 0, 3)
+            lateral.Controls.Add(btnConfiguracion)
             lateral.Controls.Add(btnTema)
             lateral.Controls.Add(btnSalir)
             Return lateral

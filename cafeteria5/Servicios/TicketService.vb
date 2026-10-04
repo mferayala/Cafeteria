@@ -18,6 +18,10 @@ Namespace CafeteriaOS
 
         Public Function ConstruirCabecera(pedido As Pedido) As String
             Dim s As New StringBuilder()
+            ' Primero el negocio: el ticket lo lee el cliente y tiene que saber
+            ' a quien le esta pagando.
+            s.AppendLine(Negocio.EncabezadoTicket())
+            s.AppendLine("--------------------------------")
             s.AppendLine("PEDIDO N. " & pedido.ID)
             s.AppendLine("Fecha: " & pedido.FechaHora.ToString("dd/MM/yyyy HH:mm"))
             If pedido.TipoServicio = TipoServicio.ParaLlevar Then
@@ -101,7 +105,7 @@ Namespace CafeteriaOS
         ''' </summary>
         Public Sub Imprimir(texto As String)
             Using fuente As New Font(Tema.FamiliaTipografica(), 9.0F)
-                Using pd As New PrintDocument With {.DocumentName = "Ticket Cafeteria"}
+                Using pd As New PrintDocument With {.DocumentName = "Ticket " & Datos.ConfigNegocio.NombreParaMostrar()}
                     pd.DefaultPageSettings.Landscape = False
 
                     Dim lineas = texto.Replace(vbCrLf, vbLf).Split(vbLf)

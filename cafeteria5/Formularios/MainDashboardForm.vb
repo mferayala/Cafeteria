@@ -20,6 +20,9 @@ Namespace CafeteriaOS
 
         Public Sub New()
             IniciarInterfaz()
+            ' El designer pone "CAFETERIA" como texto de diseno. Acá va el nombre
+            ' del negocio, para que el sistema no diga cafeteria si no lo es.
+            lblMarca.Text = Datos.ConfigNegocio.NombreParaMostrar()
             ActualizarUsuario()
             Mostrar(SeccionDashboard.Venta)
         End Sub
@@ -106,11 +109,38 @@ Namespace CafeteriaOS
             If paneles.ContainsKey(seccionActual) Then paneles(seccionActual).Refrescar()
         End Sub
 
+        ''' <summary>
+        ''' Configuracion del negocio. El boton solo se le muestra a quien puede
+        ''' entrar: el margen, los gastos y el IVA no son datos que vean los cajeros.
+        ''' </summary>
+        Private Sub btnConfiguracion_Click(sender As Object, e As EventArgs) Handles btnConfiguracion.Click
+            Dim usuario = Datos.UsuarioActual
+            If usuario Is Nothing Then Return
+
+            If Not AutenticacionService.PuedeEditarConfiguracion(usuario.Rol) Then
+                MessageBox.Show("La configuracion del negocio es solo para administradores.",
+                                "Configuracion", MessageBoxButtons.OK,
+                                MessageBoxIcon.Warning)
+                Return
+            End If
+
+            If ConfiguracionNegocioForm.Editar() Then
+                ' El nombre del negocio y los porcentajes cambiaron, asi que el
+                ' lateral y los paneles abiertos tienen que enterarse.
+                lblMarca.Text = Datos.ConfigNegocio.NombreParaMostrar()
+                For Each par In paneles
+                    par.Value.Refrescar()
+                Next
+            End If
+        End Sub
+
         Private Sub ActualizarUsuario()
             If Datos.UsuarioActual Is Nothing Then
                 lblUsuario.Text = String.Empty
                 Return
             End If
+            btnConfiguracion.Visible =
+                AutenticacionService.PuedeEditarConfiguracion(Datos.UsuarioActual.Rol)
             lblUsuario.Text = Datos.UsuarioActual.Nombre & Environment.NewLine &
                              Datos.UsuarioActual.Rol.ToString()
         End Sub
