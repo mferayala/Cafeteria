@@ -21,7 +21,6 @@ Namespace CafeteriaOS
         Private tabla As DataGridView
         Private btnNuevo As Button
         Private btnEditar As Button
-        Private btnIngreso As Button
         Private btnEliminar As Button
         Private btnExportar As Button
 
@@ -145,25 +144,6 @@ Namespace CafeteriaOS
                 Return
             End If
             If ProveedorForm.Editar(p) Then Refrescar()
-        End Sub
-
-        ''' <summary>
-        ''' Carga la mercaderia que trajo el proveedor elegido: suma el stock de los
-        ''' productos y deja registrado de que compra vino cada unidad.
-        ''' </summary>
-        Private Sub RegistrarIngreso()
-            Dim p = Seleccionado()
-            If p Is Nothing Then
-                Avisar("Elegi un proveedor de la lista.")
-                Return
-            End If
-
-            Dim ingreso = IngresoStockForm.Registrar(p)
-            If ingreso Is Nothing Then Return
-            Refrescar()
-
-            SetearSubtitulo("Ultimo ingreso: " & IngresoService.Describir(ingreso) &
-                            " (" & ingreso.CantidadTotal & " unidad(es))")
         End Sub
 
         Private Sub Eliminar()
