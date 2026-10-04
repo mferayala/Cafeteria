@@ -303,9 +303,10 @@ Namespace CafeteriaOS
 
             For Each producto In Datos.ListaProductos
                 Dim coincideCategoria = categoria = "Todos" OrElse producto.Categoria = categoria
+                ' NombreCompleto ya junta marca, nombre y descripcion, asi que la
+                ' busqueda del POS cubre las tres sin repetir el criterio.
                 Dim coincideTexto = texto.Length = 0 OrElse
-                                     producto.Nombre.ToLowerInvariant().Contains(texto) OrElse
-                                     producto.Descripcion.ToLowerInvariant().Contains(texto)
+                                     producto.NombreCompleto().ToLowerInvariant().Contains(texto)
                 If coincideCategoria AndAlso coincideTexto Then
                     flowProductos.Controls.Add(ArmarTarjeta(producto))
                 End If
@@ -332,7 +333,7 @@ Namespace CafeteriaOS
 
             Dim lblNombre = New Label With {
                 .Name = "th.tono.Primario",
-                .Text = producto.Nombre,
+                .Text = producto.NombreCompleto(),
                 .Font = Tema.Fuente(Tema.TamMini, FontStyle.Bold),
                 .ForeColor = Tema.TextoPrinc,
                 .BackColor = Color.Transparent,
@@ -476,7 +477,7 @@ Namespace CafeteriaOS
         End Sub
 
         Private Sub AvisarStock(producto As Producto)
-            lblStockBajo.Text = "No hay stock suficiente de " & producto.Nombre & "."
+            lblStockBajo.Text = "No hay stock suficiente de " & producto.NombreCompleto() & "."
             lblStockBajo.Name = "th.tono.Peligro"
         End Sub
 
@@ -485,7 +486,7 @@ Namespace CafeteriaOS
             pedidoEnCurso.Descuento = Decimal.Round(numDescuento.Value, 2)
 
             For Each item In pedidoEnCurso.Items
-                Dim fila As New ListViewItem(item.Producto.Nombre)
+                Dim fila As New ListViewItem(item.Producto.NombreCompleto())
                 fila.SubItems.Add(item.Cantidad.ToString())
                 fila.SubItems.Add(item.Producto.Precio.ToString("C2"))
                 fila.SubItems.Add(item.Subtotal.ToString("C2"))

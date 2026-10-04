@@ -18,6 +18,7 @@ Namespace CafeteriaOS
         Public Property Precio As Decimal
         Public Property Stock As Integer
         Public Property Categoria As String
+        Public Property Subcategoria As String
         Public Property Descripcion As String
 
         ''' <summary>
@@ -31,6 +32,28 @@ Namespace CafeteriaOS
 
         Public Function TienePrecio() As Boolean
             Return Precio > 0D
+        End Function
+
+        ''' <summary>
+        ''' Como se muestra el producto al cliente: marca, nombre y descripcion pegados.
+        '''
+        ''' Son tres datos separados porque el mismo nombre se repite entre marcas
+        ''' distintas ("Jugo en sobre" de TANG y de otra marca), pero al mostrarlos
+        ''' juntos el cliente tiene que ver cual compro. Las partes que ya estarian
+        ''' repetidas se omiten, para no terminar con "Cafe con leche Cafe con leche".
+        ''' </summary>
+        Public Function NombreCompleto() As String
+            Dim texto As New System.Text.StringBuilder()
+            For Each parte In New String() {Marca, Nombre, Descripcion}
+                Dim limpia = If(parte, "").Trim()
+                If limpia.Length = 0 Then Continue For
+                If texto.ToString.IndexOf(limpia, StringComparison.CurrentCultureIgnoreCase) >= 0 Then
+                    Continue For
+                End If
+                If texto.Length > 0 Then texto.Append(" ")
+                texto.Append(limpia)
+            Next
+            Return If(texto.Length = 0, "", texto.ToString())
         End Function
     End Class
 

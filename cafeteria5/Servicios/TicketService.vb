@@ -30,7 +30,7 @@ Namespace CafeteriaOS
         End Function
 
         Private Function LineaDetalle(item As DetallePedido) As String
-            Dim s = "  " & item.Cantidad.ToString() & " x " & item.Producto.Nombre
+            Dim s = "  " & item.Cantidad.ToString() & " x " & item.Producto.NombreCompleto()
             If Not String.IsNullOrWhiteSpace(item.Especificaciones) Then
                 s &= " (" & item.Especificaciones & ")"
             End If

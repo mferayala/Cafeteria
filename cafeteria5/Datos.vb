@@ -49,6 +49,20 @@ Namespace CafeteriaOS
         End Function
 
         ''' <summary>
+        ''' Id para un producto nuevo: uno mas del mayor que exista. No se usa un
+        ''' contador aparte porque el catalogo arranca con datos de ejemplo que ya
+        ''' traen sus propios numeros, y un contador independiente terminaria
+        ''' chocando con alguno de ellos.
+        ''' </summary>
+        Public Function SiguienteIdProducto() As Integer
+            Dim mayor = 0
+            For Each p In ListaProductos
+                If p.ID > mayor Then mayor = p.ID
+            Next
+            Return mayor + 1
+        End Function
+
+        ''' <summary>
         ''' Retoma la numeracion despues de recuperar el historial del disco, para que
         ''' un ingreso guardado no compita por numero con uno nuevo.
         ''' </summary>

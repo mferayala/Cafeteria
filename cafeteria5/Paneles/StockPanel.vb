@@ -77,11 +77,16 @@ Namespace CafeteriaOS
             Dim btnMenos = Tema.CrearBoton("-1", EstiloBoton.Neutro, 70, 36)
             Dim btnReponer = Tema.CrearBoton("Reponer stock", EstiloBoton.Exito, 160, 36)
             Dim btnIngresar = Tema.CrearBoton("Ingresar stock", EstiloBoton.Primario, 160, 36)
+            Dim btnNuevo = Tema.CrearBoton("+ Producto", EstiloBoton.Neutro, 130, 36)
+            Dim btnEditar = Tema.CrearBoton("Editar producto", EstiloBoton.Neutro, 150, 36)
             AddHandler btnMenos.Click, Sub(se, ev) Ajustar(-1)
             AddHandler btnReponer.Click, Sub(se, ev) Reponer()
             AddHandler btnIngresar.Click, Sub(se, ev) IngresarStock()
+            AddHandler btnNuevo.Click, Sub(se, ev) NuevoProducto()
+            AddHandler btnEditar.Click, Sub(se, ev) EditarProducto()
 
-            raiz.Controls.Add(UiKit.Botonera(btnMenos, btnReponer, btnIngresar), 0, 2)
+            raiz.Controls.Add(UiKit.Botonera(btnMenos, btnReponer, btnIngresar,
+                                              btnNuevo, btnEditar), 0, 2)
             raiz.Controls.Add(ArmarDetalle(), 0, 3)
             Contenido.Controls.Add(raiz)
         End Sub
@@ -152,8 +157,8 @@ Namespace CafeteriaOS
 
             Dim ingresos = IngresoService.PorProducto(producto)
             If ingresos.Count = 0 Then
-                lblDetalle.Text = producto.Nombre & ": sin ingresos de proveedores. " &
-                                  "El stock se ajusta manualmente."
+                lblDetalle.Text = producto.NombreCompleto() &
+                                  ": todavia no tiene ingresos registrados."
                 Return
             End If
 
@@ -164,7 +169,7 @@ Namespace CafeteriaOS
             Next
 
             Dim ultimo = ingresos(0)
-            lblDetalle.Text = producto.Nombre & ": " & ingresos.Count & " ingreso(s). " &
+            lblDetalle.Text = producto.NombreCompleto() & ": " & ingresos.Count & " ingreso(s). " &
                               "El ultimo sumo " & ultimo.CantidadDe(producto) & " unidad(es), " &
                               IngresoService.Describir(ultimo) & ". " &
                               "Sin consumir: " & restante & " de " & producto.Stock & "."
@@ -200,23 +205,24 @@ Namespace CafeteriaOS
         End Sub
 
         Public Overrides Sub Refrescar()
-            Dim texto = If(txtBuscar.Text, String.Empty).Trim().ToLowerInvariant()
+            Dim texto = If(txtBuscar.Text, String.Empty).Trim()
 
-            productos = Datos.ListaProductos.
-                Where(Function(p) texto.Length = 0 OrElse
-                               p.Nombre.ToLowerInvariant().Contains(texto) OrElse
-                               p.Categoria.ToLowerInvariant().Contains(texto)).
+            ' La busqueda la hace ProductoService: mira nombre, marca, descripcion,
+            ' categoria, subcategoria y codigo de barras, y tolera que esos datos
+            ' esten vacios. Aca se le agrega el filtro de stock critico, que es
+            ' propio de este panel.
+            productos = ProductoService.Buscar(texto).
                 Where(Function(p) Not chkSoloCriticos.Checked OrElse
                                p.Stock <= StockService.UmbralCritico).
                 OrderBy(Function(p) p.Stock).
-                ThenBy(Function(p) p.Nombre).
+                ThenBy(Function(p) If(p.Nombre, "")).
                 ToList()
 
             tabla.Rows.Clear()
             For Each p In productos
                 Dim estado = If(p.Stock <= 0, "Agotado",
                            If(p.Stock <= StockService.UmbralCritico, "Critico", "Disponible"))
-                Dim indice = tabla.Rows.Add(p.ID, p.Nombre, p.Categoria,
+                Dim indice = tabla.Rows.Add(p.ID, p.NombreCompleto(), p.Categoria,
                                             p.Precio.ToString("C2"), p.Stock, estado)
                 tabla.Rows(indice).Tag = p
                 tabla.Rows(indice).DefaultCellStyle.ForeColor =
@@ -227,6 +233,32 @@ Namespace CafeteriaOS
             Dim criticos = StockService.Criticos().Count
             SetearSubtitulo(criticos & " producto(s) en stock critico")
             MostrarDetalle()
+        End Sub
+
+        ''' <summary>Alta de un producto nuevo del catalogo.</summary>
+        Private Sub NuevoProducto()
+            Dim guardado = ProductoEditorForm.Editar(Nothing)
+            If guardado Is Nothing Then Return
+            Refrescar()
+            MessageBox.Show(guardado.NombreCompleto() & " quedo cargado en el catalogo.",
+                            "Producto", MessageBoxButtons.OK, MessageBoxIcon.Information)
+        End Sub
+
+        ''' <summary>
+        ''' Edicion del producto elegido. La lista se puede filtrar, asi que el
+        ''' producto se toma de la fila seleccionada y no de la posicion.
+        ''' </summary>
+        Private Sub EditarProducto()
+            Dim producto = ProductoSeleccionado()
+            If producto Is Nothing Then
+                MessageBox.Show("Elegi un producto de la lista.", "Editar producto",
+                                MessageBoxButtons.OK, MessageBoxIcon.Information)
+                Return
+            End If
+
+            Dim guardado = ProductoEditorForm.Editar(producto)
+            If guardado Is Nothing Then Return
+            Refrescar()
         End Sub
 
         Private Sub Ajustar(delta As Integer)
