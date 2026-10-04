@@ -41,7 +41,6 @@ Namespace CafeteriaOS
             cmbPago = Tema.CrearCombo()
             cmbPago.Dock = DockStyle.Fill
             cmbPago.Items.AddRange([Enum].GetNames(GetType(MetodoPago)))
-            cmbPago.SelectedIndex = 0
 
             txtEntregado = Tema.CrearInput()
             txtEntregado.Dock = DockStyle.Fill
@@ -77,6 +76,13 @@ Namespace CafeteriaOS
             Controls.Add(raiz)
             AcceptButton = btnCobrar
             CancelButton = btnCancelar
+
+            ' SelectedIndex va AL ULTIMO, y no por estetica: asignarlo dispara
+            ' SelectedIndexChanged en el acto, y ese handler usa txtEntregado y
+            ' lblCambio para habilitar el campo de efectivo y calcular el vuelto.
+            ' Si se selecciona antes de que existan, el cobro revienta con
+            ' NullReferenceException siempre, antes de que el usuario elija nada.
+            cmbPago.SelectedIndex = 0
         End Sub
 
         Private Function Etiqueta(texto As String) As Label

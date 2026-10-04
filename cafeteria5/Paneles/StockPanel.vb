@@ -76,21 +76,19 @@ Namespace CafeteriaOS
 
             Dim btnMenos = Tema.CrearBoton("-1", EstiloBoton.Neutro, 70, 36)
             Dim btnReponer = Tema.CrearBoton("Reponer stock", EstiloBoton.Exito, 160, 36)
-            Dim btnIngresar = Tema.CrearBoton("Ingresar stock", EstiloBoton.Primario, 160, 36)
             Dim btnNuevo = Tema.CrearBoton("+ Producto", EstiloBoton.Neutro, 130, 36)
             Dim btnEditar = Tema.CrearBoton("Editar producto", EstiloBoton.Neutro, 150, 36)
             Dim btnMovimientos = Tema.CrearBoton("Movimientos", EstiloBoton.Neutro, 140, 36)
             Dim btnCategorias = Tema.CrearBoton("Categorias", EstiloBoton.Neutro, 140, 36)
             AddHandler btnMenos.Click, Sub(se, ev) Ajustar(-1)
-            AddHandler btnReponer.Click, Sub(se, ev) Reponer()
-            AddHandler btnIngresar.Click, Sub(se, ev) IngresarStock()
+            AddHandler btnReponer.Click, Sub(se, ev) ReponerStock()
             AddHandler btnNuevo.Click, Sub(se, ev) NuevoProducto()
             AddHandler btnEditar.Click, Sub(se, ev) EditarProducto()
             AddHandler btnMovimientos.Click, Sub(se, ev) VerMovimientos()
             AddHandler btnCategorias.Click, Sub(se, ev) VerCategorias()
 
-            raiz.Controls.Add(UiKit.Botonera(btnMenos, btnReponer, btnIngresar,
-                                              btnNuevo, btnEditar, btnMovimientos,
+            raiz.Controls.Add(UiKit.Botonera(btnMenos, btnReponer, btnNuevo,
+                                              btnEditar, btnMovimientos,
                                               btnCategorias), 0, 2)
             raiz.Controls.Add(ArmarDetalle(), 0, 3)
             Contenido.Controls.Add(raiz)
@@ -303,19 +301,26 @@ Namespace CafeteriaOS
             Refrescar()
         End Sub
 
-        Private Sub Reponer()
+        ''' <summary>
+        ''' Un solo boton para las dos maneras de reponer. Antes habia "Reponer stock" y
+        ''' "Ingresar stock" juntos, y con un producto elegido los dos reponian lo mismo:
+        ''' habia que adivinar cual usar. Ahora decide por la seleccion.
+        '''
+        ''' Con producto va a la pantalla de uno, que es la rapida. Sin producto va al
+        ''' ingreso multilinea, que es la unica forma de cargar varias unidades en una
+        ''' sola operacion.
+        ''' </summary>
+        Private Sub ReponerStock()
             Dim producto = ProductoSeleccionado()
-            If producto Is Nothing Then
-                MessageBox.Show("Elegi un producto de la lista.", "Stock",
-                                MessageBoxButtons.OK, MessageBoxIcon.Information)
-                Return
-            End If
 
-            ' Antes la reposicion se resolvia con un InputBox que se negaba a trabajar
-            ' cuando el producto no estaba por debajo del minimo, de modo que si el
-            ' stock ya estaba alto no habia forma de reponer. Ahora va a la pantalla de
-            ' reposicion, que repone la cantidad que se escriba siempre.
-            ReposicionStockForm.Reponer(producto)
+            If producto Is Nothing Then
+                IngresoStockForm.Registrar()
+            Else
+                ' La reposicion se resuelve con una pantalla y no con un InputBox que
+                ' se negaba a trabajar cuando el producto no estaba por debajo del
+                ' minimo: si el stock ya estaba alto no habia forma de reponer.
+                ReposicionStockForm.Reponer(producto)
+            End If
             Refrescar()
         End Sub
 
@@ -331,22 +336,6 @@ Namespace CafeteriaOS
 
         Private Sub chkSoloCriticos_CheckedChanged(sender As Object, e As EventArgs) Handles chkSoloCriticos.CheckedChanged
             If tabla Is Nothing Then Return
-            Refrescar()
-        End Sub
-        ''' <summary>
-        ''' Ingreso de mercaderia: varias lineas en una sola operacion, con busqueda y
-        ''' filtros. El proveedor se elige dentro de la pantalla y es opcional.
-        '''
-        ''' Si hay un producto elegido se lo pasa abierto para no obligar a buscar de
-        ''' nuevo algo que el usuario ya habia elegido en la lista.
-        ''' </summary>
-        Private Sub IngresarStock()
-            Dim producto = ProductoSeleccionado()
-            If producto Is Nothing Then
-                IngresoStockForm.Registrar()
-            Else
-                IngresoStockForm.Reponer(producto)
-            End If
             Refrescar()
         End Sub
 

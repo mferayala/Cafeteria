@@ -158,6 +158,11 @@ Namespace CafeteriaOS
             cmbProveedor = Tema.CrearCombo()
             cmbProveedor.Dock = DockStyle.Fill
             cmbProveedor.DropDownStyle = ComboBoxStyle.DropDownList
+            ' Sin DisplayMember el combo dibuja el nombre del tipo: la lista se
+            ' llena igual, pero todas las filas dicen "CafeteriaOS.Proveedor" y no
+            ' se distingue un proveedor de otro. El SelectedItem sigue siendo el
+            ' objeto Proveedor.
+            cmbProveedor.DisplayMember = NameOf(Proveedor.Nombre)
             AddHandler cmbProveedor.SelectedIndexChanged, Sub() ElegirProveedor()
 
             Dim host As New TableLayoutPanel With {
