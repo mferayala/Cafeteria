@@ -303,16 +303,20 @@ Namespace CafeteriaOS
             If tabla Is Nothing Then Return
             Refrescar()
         End Sub
+        ''' <summary>
+        ''' Ingreso de mercaderia: varias lineas en una sola operacion, con busqueda y
+        ''' filtros. El proveedor se elige dentro de la pantalla y es opcional.
+        '''
+        ''' Si hay un producto elegido se lo pasa abierto para no obligar a buscar de
+        ''' nuevo algo que el usuario ya habia elegido en la lista.
+        ''' </summary>
         Private Sub IngresarStock()
             Dim producto = ProductoSeleccionado()
             If producto Is Nothing Then
-                MessageBox.Show("Elegi un producto de la lista.", "Ingresar stock",
-                                MessageBoxButtons.OK, MessageBoxIcon.Information)
-                Return
+                IngresoStockForm.Registrar()
+            Else
+                IngresoStockForm.Reponer(producto)
             End If
-
-            Dim ok = ReposicionStockForm.Reponer(producto)
-            If Not ok Then Return
             Refrescar()
         End Sub
 

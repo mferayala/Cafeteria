@@ -160,6 +160,7 @@ Namespace CafeteriaOS
 
             Dim ingreso = IngresoStockForm.Registrar(p)
             If ingreso Is Nothing Then Return
+            Refrescar()
 
             SetearSubtitulo("Ultimo ingreso: " & IngresoService.Describir(ingreso) &
                             " (" & ingreso.CantidadTotal & " unidad(es))")
