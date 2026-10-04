@@ -79,14 +79,16 @@ Namespace CafeteriaOS
             Dim btnIngresar = Tema.CrearBoton("Ingresar stock", EstiloBoton.Primario, 160, 36)
             Dim btnNuevo = Tema.CrearBoton("+ Producto", EstiloBoton.Neutro, 130, 36)
             Dim btnEditar = Tema.CrearBoton("Editar producto", EstiloBoton.Neutro, 150, 36)
+            Dim btnMovimientos = Tema.CrearBoton("Movimientos", EstiloBoton.Neutro, 140, 36)
             AddHandler btnMenos.Click, Sub(se, ev) Ajustar(-1)
             AddHandler btnReponer.Click, Sub(se, ev) Reponer()
             AddHandler btnIngresar.Click, Sub(se, ev) IngresarStock()
             AddHandler btnNuevo.Click, Sub(se, ev) NuevoProducto()
             AddHandler btnEditar.Click, Sub(se, ev) EditarProducto()
+            AddHandler btnMovimientos.Click, Sub(se, ev) VerMovimientos()
 
             raiz.Controls.Add(UiKit.Botonera(btnMenos, btnReponer, btnIngresar,
-                                              btnNuevo, btnEditar), 0, 2)
+                                              btnNuevo, btnEditar, btnMovimientos), 0, 2)
             raiz.Controls.Add(ArmarDetalle(), 0, 3)
             Contenido.Controls.Add(raiz)
         End Sub
@@ -213,7 +215,7 @@ Namespace CafeteriaOS
             ' propio de este panel.
             productos = ProductoService.Buscar(texto).
                 Where(Function(p) Not chkSoloCriticos.Checked OrElse
-                               p.Stock <= StockService.UmbralCritico).
+                               StockService.EstaCritico(p)).
                 OrderBy(Function(p) p.Stock).
                 ThenBy(Function(p) If(p.Nombre, "")).
                 ToList()
@@ -221,13 +223,13 @@ Namespace CafeteriaOS
             tabla.Rows.Clear()
             For Each p In productos
                 Dim estado = If(p.Stock <= 0, "Agotado",
-                           If(p.Stock <= StockService.UmbralCritico, "Critico", "Disponible"))
+                           If(StockService.EstaCritico(p), "Critico", "Disponible"))
                 Dim indice = tabla.Rows.Add(p.ID, p.NombreCompleto(), p.Categoria,
                                             p.Precio.ToString("C2"), p.Stock, estado)
                 tabla.Rows(indice).Tag = p
                 tabla.Rows(indice).DefaultCellStyle.ForeColor =
                     If(p.Stock <= 0, Tema.Rojo,
-                       If(p.Stock <= StockService.UmbralCritico, Tema.Naranja, Tema.TextoPrinc))
+                       If(StockService.EstaCritico(p), Tema.Naranja, Tema.TextoPrinc))
             Next
 
             Dim criticos = StockService.Criticos().Count
@@ -236,6 +238,14 @@ Namespace CafeteriaOS
         End Sub
 
         ''' <summary>Alta de un producto nuevo del catalogo.</summary>
+        ''' <summary>
+        ''' Historial de movimientos. Con un producto elegido se abre acotado a el,
+        ''' que es la pregunta que mas se hace: que le paso a este producto.
+        ''' </summary>
+        Private Sub VerMovimientos()
+            MovimientosStockForm.Ver(ProductoSeleccionado())
+        End Sub
+
         Private Sub NuevoProducto()
             Dim guardado = ProductoEditorForm.Editar(Nothing)
             If guardado Is Nothing Then Return

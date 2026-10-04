@@ -48,9 +48,23 @@ Namespace CafeteriaOS
             BackColor = Tema.BgPrincipal
             Font = Tema.Fuente(Tema.TamNormal)
 
-            Dim raiz As New TableLayoutPanel With {.Dock = DockStyle.Fill, .ColumnCount = 2, .RowCount = 13, .BackColor = Tema.BgPrincipal, .Padding = New Padding(16)}
+            ' RowCount era 13 y se usan filas hasta la 15, asi que las ultimas se
+            ' quedaban con el alto por defecto y el aviso del ultimo ingreso salia
+            ' cortado. Se declara el alto de cada fila.
+            Dim raiz As New TableLayoutPanel With {
+                .Dock = DockStyle.Fill,
+                .ColumnCount = 2,
+                .RowCount = 16,
+                .BackColor = Tema.BgPrincipal,
+                .Padding = New Padding(16)
+            }
             raiz.ColumnStyles.Add(New ColumnStyle(SizeType.Absolute, 140))
             raiz.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 100))
+            For i = 0 To 13
+                raiz.RowStyles.Add(New RowStyle(SizeType.Absolute, 30))
+            Next
+            raiz.RowStyles.Add(New RowStyle(SizeType.Absolute, 40))
+            raiz.RowStyles.Add(New RowStyle(SizeType.Absolute, 44))
 
             txtCodigo = New TextBox With {.Dock = DockStyle.Fill, .ReadOnly = True}
             txtCodigoBarra = New TextBox With {.Dock = DockStyle.Fill, .ReadOnly = True}
@@ -121,13 +135,39 @@ Namespace CafeteriaOS
             txtPrecioCosto.Text = producto.PrecioCosto.ToString("N2")
             txtPrecioVenta.Text = producto.Precio.ToString("N2")
             txtStockActual.Text = producto.Stock.ToString()
-            txtStockMinimo.Text = "0"
+            txtStockMinimo.Text = StockService.MinimoDe(producto).ToString()
+
+            ' Se propone justamente lo que falta para llegar al minimo. Si el
+            ' producto ya esta por encima, se propone 1 y no un numero inventado.
+            Dim faltante = StockService.MinimoDe(producto) - producto.Stock
+            txtCantidad.Value = Math.Max(1, Math.Min(faltante, 100000))
             ActualizarResultante()
         End Sub
 
         Private Sub ActualizarResultante()
-            txtStockResultante.Text = (producto.Stock + CInt(txtCantidad.Value)).ToString()
+            Dim cant = CInt(txtCantidad.Value)
+            txtStockResultante.Text = (producto.Stock + cant).ToString()
+
+            Dim minimo = StockService.MinimoDe(producto)
+            Dim faltan = minimo - producto.Stock
+
+            ' En dos lineas: en una sola no entra en el ancho de la columna y
+            ' la geometria el recorte. La segunda parte va sola para que se lea
+            ' sin completar lo que se cuta.
+            lblUltimo.Text = "Minimo " & minimo & ". Le faltan " & Math.Max(0, faltan) &
+                             " unidad(es) para llegar al minimo." & Environment.NewLine &
+                             "Ultimo ingreso: " & UltimoIngreso()
+            lblUltimo.ForeColor = If(faltan <= 0, Tema.TextoSec, Tema.Naranja)
         End Sub
+
+        ''' <summary>Como llego la ultima vez, o que nunca ingreso.</summary>
+        Private Function UltimoIngreso() As String
+            Dim ingresos = IngresoService.PorProducto(producto)
+            If ingresos.Count = 0 Then Return "todavia no tiene ingresos."
+            Dim ultimo = ingresos(0)
+            Return IngresoService.Describir(ultimo) & ", " &
+                   ultimo.CantidadDe(producto).ToString() & " u."
+        End Function
 
         Private Sub Confirmar()
             Dim cant = CInt(txtCantidad.Value)

@@ -62,6 +62,11 @@ Namespace CafeteriaOS
                 Return resultado
             End If
 
+            If p.StockMinimo < 0 Then
+                resultado.Mensaje = "El minimo de stock no puede ser negativo."
+                Return resultado
+            End If
+
             Dim codigo = Si(p.CodigoBarra, "").Trim()
             If codigo.Length > 0 Then
                 Dim repetido = BuscarPorCodigoBarra(codigo, p.ID)
@@ -116,6 +121,7 @@ Namespace CafeteriaOS
             destino.UnidadMedida = origen.UnidadMedida
             destino.PrecioCosto = origen.PrecioCosto
             destino.Precio = origen.Precio
+            destino.StockMinimo = origen.StockMinimo
             destino.Categoria = origen.Categoria
             destino.Subcategoria = origen.Subcategoria
             destino.Descripcion = origen.Descripcion

@@ -32,6 +32,7 @@ Namespace CafeteriaOS
         Private txtCosto As TextBox
         Private txtVenta As TextBox
         Private txtStock As NumericUpDown
+        Private txtStockMinimo As NumericUpDown
         Private txtAtajo As TextBox
         Private lblSugerido As Label
         Private WithEvents btnGuardar As Button
@@ -68,7 +69,7 @@ Namespace CafeteriaOS
             Dim raiz As New TableLayoutPanel With {
                 .Dock = DockStyle.Fill,
                 .ColumnCount = 3,
-                .RowCount = 14,
+                .RowCount = 15,
                 .BackColor = Tema.BgPrincipal,
                 .Padding = New Padding(16)
             }
@@ -103,6 +104,12 @@ Namespace CafeteriaOS
                 .Dock = DockStyle.Fill,
                 .ThousandsSeparator = True
             }
+            txtStockMinimo = New NumericUpDown With {
+                .Minimum = 0,
+                .Maximum = 1000000,
+                .Dock = DockStyle.Fill,
+                .ThousandsSeparator = True
+            }
 
             AddRow(raiz, 0, "Nombre", txtNombre)
             AddRow(raiz, 1, "Marca", txtMarca)
@@ -129,6 +136,7 @@ Namespace CafeteriaOS
             AddSeparador(raiz, 11, "STOCK")
 
             AddRow(raiz, 12, "Stock inicial", txtStock)
+            AddRow(raiz, 13, "Stock minimo", txtStockMinimo)
 
             btnGuardar = Tema.CrearBoton("Guardar", EstiloBoton.Exito, 150, 36)
             btnCancelar = Tema.CrearBoton("Cancelar", EstiloBoton.Neutro, 120, 36)
@@ -143,7 +151,7 @@ Namespace CafeteriaOS
             }
             acciones.Controls.Add(btnCancelar)
             acciones.Controls.Add(btnGuardar)
-            raiz.Controls.Add(acciones, 0, 13)
+            raiz.Controls.Add(acciones, 0, 14)
             raiz.SetColumnSpan(acciones, 3)
 
             Controls.Add(raiz)
@@ -222,6 +230,8 @@ Namespace CafeteriaOS
             txtCosto.Text = producto.PrecioCosto.ToString("N2")
             txtVenta.Text = producto.Precio.ToString("N2")
             txtStock.Value = Math.Max(0, Math.Min(producto.Stock, txtStock.Maximum))
+            txtStockMinimo.Value = Math.Max(0, Math.Min(producto.StockMinimo,
+                                                        txtStockMinimo.Maximum))
             CargarSugerencias()
             ActualizarSugerido()
         End Sub
@@ -296,6 +306,7 @@ Namespace CafeteriaOS
             candidato.PrecioCosto = costo
             candidato.Precio = venta
             candidato.Stock = CInt(txtStock.Value)
+            candidato.StockMinimo = CInt(txtStockMinimo.Value)
 
             Dim resultado = ProductoService.Guardar(candidato)
             If Not resultado.Ok Then

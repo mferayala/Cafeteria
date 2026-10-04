@@ -117,12 +117,33 @@ Namespace CafeteriaOS
             End Select
         End Function
 
+        ''' <summary>
+        ''' Minimo de stock de un producto.
+        '''
+        ''' Cada producto tiene el suyo porque el deposito de un paquete de servidores y
+        ''' el de una bolsa de pan no se comparan: 10 unidades es critico para uno y
+        ''' es mucho para el otro. El umbral global queda como piso, para que un
+        ''' producto recien cargado sin minimo siga teniendo uno razonable en vez de
+        ''' aparecer siempre disponible.
+        ''' </summary>
+        Public Function MinimoDe(p As Producto) As Integer
+            If p Is Nothing Then Return 0
+            Return If(p.StockMinimo > 0, p.StockMinimo, UmbralCritico)
+        End Function
+
         Public Function Criticos() As List(Of Producto)
-            Return Datos.ListaProductos.Where(Function(p) p.Stock <= UmbralCritico).ToList()
+            Return Datos.ListaProductos.
+                Where(Function(p) p.Stock <= MinimoDe(p)).
+                ToList()
         End Function
 
         Public Function EstaAgotado(producto As Producto) As Boolean
-            Return producto.Stock <= 0
+            Return producto IsNot Nothing AndAlso producto.Stock <= 0
+        End Function
+
+        ''' <summary>Critico es estar en o por debajo del minimo propio del producto.</summary>
+        Public Function EstaCritico(p As Producto) As Boolean
+            Return p IsNot Nothing AndAlso p.Stock <= MinimoDe(p)
         End Function
 
     End Module

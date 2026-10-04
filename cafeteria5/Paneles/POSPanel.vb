@@ -319,7 +319,7 @@ Namespace CafeteriaOS
         Private Function ArmarTarjeta(producto As Producto) As Panel
             Dim disponible = StockService.Disponible(pedidoEnCurso.Items, producto)
             Dim tonoStock As Tono = If(disponible <= 0, Tono.Peligro,
-                                        If(disponible <= StockService.UmbralCritico, Tono.Atencion, Tono.Exito))
+                                        If(disponible <= StockService.MinimoDe(producto), Tono.Atencion, Tono.Exito))
 
             Dim tarjeta As New Panel With {
                 .Name = "th.tarjeta",

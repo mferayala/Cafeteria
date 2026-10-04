@@ -17,6 +17,13 @@ Namespace CafeteriaOS
         Public Property PrecioCosto As Decimal
         Public Property Precio As Decimal
         Public Property Stock As Integer
+
+        ''' <summary>
+        ''' Minimo de este producto. Cero significa "usar el umbral general": un
+        ''' producto recien cargado todavia tiene que tener un minimo razonable.
+        ''' </summary>
+        Public Property StockMinimo As Integer
+
         Public Property Categoria As String
         Public Property Subcategoria As String
         Public Property Descripcion As String
