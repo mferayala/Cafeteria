@@ -236,7 +236,8 @@ Namespace CafeteriaOS
                                 MessageBoxButtons.OK, MessageBoxIcon.Information)
                 Return
             End If
-            StockService.Ajustar(producto, delta)
+            StockService.Ajustar(producto, delta, TipoMovimientoStock.Ajuste,
+                                 Datos.UsuarioActualNombre(), "Correccion manual desde Stock")
             Refrescar()
         End Sub
 
@@ -248,24 +249,11 @@ Namespace CafeteriaOS
                 Return
             End If
 
-            ' El boton suma las unidades que se escriban, asi que el dialogo propone
-            ' justamente las que faltan para llegar al umbral y no un numero fijo.
-            Dim faltante = StockService.UmbralCritico - producto.Stock
-            If faltante < 1 Then
-                MessageBox.Show(producto.Nombre & " ya tiene " & producto.Stock &
-                                " unidades, no hay nada critico para reponer.",
-                                "Reponer stock", MessageBoxButtons.OK, MessageBoxIcon.Information)
-                Return
-            End If
-
-            Dim cantidad As Integer
-            Dim escrito = InputBox("Cuantas unidades de " & producto.Nombre & " vas a reponer?" &
-                                   Environment.NewLine & "Stock actual: " & producto.Stock &
-                                   Environment.NewLine & "Minimo: " & StockService.UmbralCritico,
-                                   "Reponer stock", faltante.ToString())
-            If Not Integer.TryParse(escrito, cantidad) OrElse cantidad <= 0 Then Return
-
-            StockService.Ajustar(producto, cantidad)
+            ' Antes la reposicion se resolvia con un InputBox que se negaba a trabajar
+            ' cuando el producto no estaba por debajo del minimo, de modo que si el
+            ' stock ya estaba alto no habia forma de reponer. Ahora va a la pantalla de
+            ' reposicion, que repone la cantidad que se escriba siempre.
+            ReposicionStockForm.Reponer(producto)
             Refrescar()
         End Sub
 

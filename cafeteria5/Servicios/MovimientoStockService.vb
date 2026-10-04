@@ -2,81 +2,96 @@ Imports System
 
 Namespace CafeteriaOS
 
+    ''' <summary>
+    ''' Asientos de stock. Cada operacion que cambia el stock deja un movimiento: por eso
+    ''' se puede responder de donde sale cada unidad y quien la toco.
+    '''
+    ''' El tipo lo declara el que llama, nunca se deduce aca. StockService es el unico
+    ''' que llama a Registrar, y por lo tanto hay un solo asiento por operacion.
+    ''' </summary>
     Public Module MovimientoStockService
 
-        Public Sub RegistrarIngreso(ingreso As IngresoStock, usuario As String)
-            If ingreso Is Nothing Then Return
-            For Each d In ingreso.Detalles
-                If d.Producto Is Nothing OrElse d.Cantidad <= 0 Then Continue For
-                Datos.RegistrarMovimiento(New MovimientoStock With {
-                    .Producto = d.Producto,
-                    .Cantidad = d.Cantidad,
-                    .Tipo = TipoMovimientoStock.Ingreso,
-                    .Origen = "IngresoStock",
-                    .ReferenciaID = ingreso.ID,
-                    .Usuario = If(String.IsNullOrWhiteSpace(usuario), Datos.UsuarioActualNombre(), usuario),
-                    .Observacion = If(String.IsNullOrWhiteSpace(d.Observacion), "Ingreso de stock", d.Observacion)
-                })
-            Next
-        End Sub
+        ''' <summary>
+        ''' Deja constancia de un cambio de stock. La cantidad va con signo: positiva si
+        ''' sumo unidades, negativa si las resto.
+        ''' </summary>
+        Public Sub Registrar(producto As Producto,
+                             cantidad As Integer,
+                             tipo As TipoMovimientoStock,
+                             origen As String,
+                             referenciaID As Integer,
+                             usuario As String,
+                             observacion As String)
 
-        Public Sub RegistrarReposicion(producto As Producto, cantidad As Integer, usuario As String, obs As String)
-            If producto Is Nothing OrElse cantidad <= 0 Then Return
+            If producto Is Nothing OrElse cantidad = 0 Then Return
+
             Datos.RegistrarMovimiento(New MovimientoStock With {
                 .Producto = producto,
                 .Cantidad = cantidad,
-                .Tipo = TipoMovimientoStock.Reposicion,
-                .Origen = "Reposicion",
-                .ReferenciaID = 0,
-                .Usuario = If(String.IsNullOrWhiteSpace(usuario), Datos.UsuarioActualNombre(), usuario),
-                .Observacion = If(String.IsNullOrWhiteSpace(obs), "Reposición de stock", obs)
+                .Tipo = tipo,
+                .Origen = If(String.IsNullOrWhiteSpace(origen), "Sistema", origen),
+                .ReferenciaID = referenciaID,
+                .Usuario = If(String.IsNullOrWhiteSpace(usuario),
+                              Datos.UsuarioActualNombre(), usuario),
+                .Observacion = If(String.IsNullOrWhiteSpace(observacion),
+                                  DescripcionPorDefecto(tipo), observacion)
             })
         End Sub
 
-        Public Sub RegistrarAjuste(producto As Producto, delta As Integer, usuario As String, obs As String)
-            If producto Is Nothing OrElse delta = 0 Then Return
-            Datos.RegistrarMovimiento(New MovimientoStock With {
-                .Producto = producto,
-                .Cantidad = delta,
-                .Tipo = TipoMovimientoStock.Ajuste,
-                .Origen = "Ajuste",
-                .ReferenciaID = 0,
-                .Usuario = If(String.IsNullOrWhiteSpace(usuario), Datos.UsuarioActualNombre(), usuario),
-                .Observacion = If(String.IsNullOrWhiteSpace(obs), "Ajuste manual de stock", obs)
-            })
-        End Sub
+        ''' <summary>Texto de respaldo para cuando quien opera no escribe nada.</summary>
+        Public Function DescripcionPorDefecto(tipo As TipoMovimientoStock) As String
+            Select Case tipo
+                Case TipoMovimientoStock.Ingreso : Return "Ingreso de mercaderia"
+                Case TipoMovimientoStock.Reposicion : Return "Reposicion de stock"
+                Case TipoMovimientoStock.Ajuste : Return "Ajuste manual de stock"
+                Case TipoMovimientoStock.Venta : Return "Venta"
+                Case TipoMovimientoStock.Cancelacion : Return "Cancelacion de venta"
+                Case TipoMovimientoStock.Devolucion : Return "Devolucion"
+                Case Else : Return "Movimiento de stock"
+            End Select
+        End Function
 
+        ''' <summary>
+        ''' Una venta descuenta una unidad por cada linea del pedido. La recibe
+        ''' StockService al confirmar, y queda firmada con el numero del pedido.
+        ''' </summary>
         Public Sub RegistrarVenta(pedido As Pedido)
             If pedido Is Nothing Then Return
             For Each item In pedido.Items
-                If item.Producto Is Nothing Then Continue For
-                Datos.RegistrarMovimiento(New MovimientoStock With {
-                    .Producto = item.Producto,
-                    .Cantidad = -item.Cantidad,
-                    .Tipo = TipoMovimientoStock.Venta,
-                    .Origen = "POS",
-                    .ReferenciaID = pedido.ID,
-                    .Usuario = Datos.UsuarioActualNombre(),
-                    .Observacion = "Venta Pedido #" & pedido.ID
-                })
+                Registrar(item.Producto, -item.Cantidad, TipoMovimientoStock.Venta,
+                          "POS", pedido.ID, Datos.UsuarioActualNombre(),
+                          "Venta del pedido N. " & pedido.ID)
             Next
         End Sub
 
+        ''' <summary>
+        ''' Cancelar una venta devuelve las unidades. Solo se asienta si el pedido
+        ''' realmente habia descontado stock: cancelar dos veces no genera dos devoluciones.
+        ''' </summary>
         Public Sub RegistrarCancelacion(pedido As Pedido)
             If pedido Is Nothing OrElse Not pedido.StockDescontado Then Return
             For Each item In pedido.Items
-                If item.Producto Is Nothing Then Continue For
-                Datos.RegistrarMovimiento(New MovimientoStock With {
-                    .Producto = item.Producto,
-                    .Cantidad = item.Cantidad,
-                    .Tipo = TipoMovimientoStock.Cancelacion,
-                    .Origen = "POS",
-                    .ReferenciaID = pedido.ID,
-                    .Usuario = Datos.UsuarioActualNombre(),
-                    .Observacion = "Cancelación Pedido #" & pedido.ID & " - " & If(String.IsNullOrWhiteSpace(pedido.MotivoCancelacion), "", pedido.MotivoCancelacion)
-                })
+                Registrar(item.Producto, item.Cantidad, TipoMovimientoStock.Cancelacion,
+                          "POS", pedido.ID, Datos.UsuarioActualNombre(),
+                          "Cancelacion del pedido N. " & pedido.ID)
             Next
         End Sub
+
+        ''' <summary>
+        ''' Historial de un producto del mas nuevo al mas viejo. Es la trazabilidad
+        ''' completa: no solo los ingresos, tambien las reposiciones, los ajustes y las
+        ''' ventas, que antes no quedaban registrados.
+        ''' </summary>
+        Public Function Historial(producto As Producto) As System.Collections.Generic.List(Of MovimientoStock)
+            If producto Is Nothing Then
+                Return New System.Collections.Generic.List(Of MovimientoStock)()
+            End If
+            Return Datos.ListaMovimientos.
+                Where(Function(m) ReferenceEquals(m.Producto, producto)).
+                OrderByDescending(Function(m) m.Fecha).
+                ThenByDescending(Function(m) m.ID).
+                ToList()
+        End Function
 
     End Module
 

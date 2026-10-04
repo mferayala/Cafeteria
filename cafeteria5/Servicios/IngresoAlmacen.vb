@@ -46,13 +46,31 @@ Namespace CafeteriaOS
                 For Each ingreso In Datos.ListaIngresos
                     aGuardar.Add(TraducirAJson(ingreso))
                 Next
-                File.WriteAllText(Ruta, JsonSerializer.Serialize(aGuardar, Opciones),
-                                  New UTF8Encoding(False))
+
+                EscribirAtomico(JsonSerializer.Serialize(aGuardar, Opciones))
                 Return True
             Catch
                 Return False
             End Try
         End Function
+
+        ''' <summary>
+        ''' Escribe primero en un archivo vecino y recien ahi lo pone en lugar del
+        ''' anterior. Si el equipo se apaga o falla la escritura a mitad de camino, el
+        ''' historial que ya existia sigue intacto en vez de quedar truncado.
+        ''' </summary>
+        Private Sub EscribirAtomico(contenido As String)
+            Dim temporal = Ruta & ".tmp"
+            File.WriteAllText(temporal, contenido, New UTF8Encoding(False))
+
+            ' Replace necesita el destino existente; Move la pisa de forma atomica.
+            If File.Exists(Ruta) Then
+                File.Replace(temporal, Ruta, Nothing, True)
+            Else
+                File.Move(temporal, Ruta)
+            End If
+        End Sub
+
 
         ''' <summary>
         ''' Recupera el historial. Reconstruye las referencias a producto y proveedor por

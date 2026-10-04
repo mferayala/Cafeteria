@@ -128,17 +128,20 @@ Namespace CafeteriaOS
         Private Sub ActualizarResultante()
             txtStockResultante.Text = (producto.Stock + CInt(txtCantidad.Value)).ToString()
         End Sub
+
         Private Sub Confirmar()
             Dim cant = CInt(txtCantidad.Value)
             If cant <= 0 Then
-                MessageBox.Show("Cantidad debe ser mayor a 0.", "Reposición", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+                MessageBox.Show("La cantidad a reponer tiene que ser mayor a cero.",
+                                "Reposición de stock", MessageBoxButtons.OK, MessageBoxIcon.Warning)
                 Return
             End If
-            StockService.Ajustar(producto, cant, Datos.UsuarioActualNombre(), If(txtObservacion.Text.Trim(), "Reposición"))
-            Try
-                MovimientoStockService.RegistrarReposicion(producto, cant, Datos.UsuarioActualNombre(), txtObservacion.Text.Trim())
-            Catch
-            End Try
+
+            Dim nota = txtObservacion.Text.Trim()
+            ' Un solo asiento: Ajustar recibe el tipo Reposicion y deja el movimiento.
+            StockService.Ajustar(producto, cant, TipoMovimientoStock.Reposicion,
+                                 Datos.UsuarioActualNombre(), nota)
+
             DialogResult = DialogResult.OK
             Close()
         End Sub

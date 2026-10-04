@@ -71,14 +71,51 @@ Namespace CafeteriaOS
             pedido.StockDescontado = False
         End Sub
 
-        Public Sub Ajustar(producto As Producto, delta As Integer, Optional usuario As String = Nothing, Optional obs As String = Nothing)
+        ''' <summary>
+        ''' Suma o resta unidades dejando un movimiento con el tipo que declara la
+        ''' intencion de la operacion. El tipo es obligatorio a proposito: este es el
+        ''' unico punto del sistema que registra aumentos y disminuciones manuales, asi
+        ''' que no puede quedar una operacion sin asentar.
+        '''
+        ''' Antes cada pantalla eligia el tipo por su cuenta y ademas registraba por su
+        ''' lado, de modo que el ingreso y la reposicion dejaban dos movimientos por la
+        ''' misma operacion. Acá hay un solo asiento por operacion, con su tipo real.
+        ''' </summary>
+        Public Sub Ajustar(producto As Producto,
+                           delta As Integer,
+                           tipo As TipoMovimientoStock,
+                           Optional usuario As String = Nothing,
+                           Optional observacion As String = Nothing,
+                           Optional referenciaID As Integer = 0)
+
             If producto Is Nothing OrElse delta = 0 Then Return
-            producto.Stock = Math.Max(0, producto.Stock + delta)
+
+            Dim antes = producto.Stock
+            producto.Stock = Math.Max(0, antes + delta)
+
+            ' Si el stock estaba en 0 y se_restan 5, quedan 0 y no -5: el movimiento
+            ' tiene que decir cuanto cambio el deposito de verdad, o el historial
+            ' suma unidades que nunca entraron.
+            Dim aplicado = producto.Stock - antes
+            If aplicado = 0 Then Return
+
             Try
-                MovimientoStockService.RegistrarAjuste(producto, delta, usuario, obs)
+                MovimientoStockService.Registrar(producto, aplicado, tipo,
+                                                 OrigenDe(tipo), referenciaID,
+                                                 usuario, observacion)
             Catch
             End Try
         End Sub
+
+        ''' <summary>Modulo que origina cada tipo, para poder filtrar el historial.</summary>
+        Public Function OrigenDe(tipo As TipoMovimientoStock) As String
+            Select Case tipo
+                Case TipoMovimientoStock.Ingreso : Return "IngresoStock"
+                Case TipoMovimientoStock.Reposicion : Return "Reposicion"
+                Case TipoMovimientoStock.Ajuste : Return "StockPanel"
+                Case Else : Return "Sistema"
+            End Select
+        End Function
 
         Public Function Criticos() As List(Of Producto)
             Return Datos.ListaProductos.Where(Function(p) p.Stock <= UmbralCritico).ToList()

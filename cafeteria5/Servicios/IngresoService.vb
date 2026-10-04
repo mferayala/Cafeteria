@@ -12,17 +12,16 @@ Namespace CafeteriaOS
         ''' <summary>
         ''' Registra el ingreso completo: primero valida todo y recien despues toca el
         ''' stock, para que un dato invalido no deje mercaderia a medio sumar.
+        '''
+        ''' El proveedor es opcional a proposito. Hay ingresos que no vienen de una compra
+        ''' (una devolucion, un rescate de mercaderia, una correccion) y forzarlos a
+        ''' elegir un proveedor terminaba inventando de quien era la mercaderia.
         ''' </summary>
         Public Function Registrar(proveedor As Proveedor,
                                   detalles As IEnumerable(Of DetalleIngreso),
                                   observaciones As String) As ResultadoIngreso
 
             Dim resultado As New ResultadoIngreso()
-
-            If proveedor Is Nothing Then
-                resultado.Mensaje = "Elegi un proveedor."
-                Return resultado
-            End If
 
             Dim lineas As New List(Of DetalleIngreso)()
             For Each d In detalles
@@ -69,19 +68,23 @@ Namespace CafeteriaOS
             Datos.RegistrarIngreso(ingreso)
 
             For Each d In lineas
-                StockService.Ajustar(d.Producto, d.Cantidad)
+                StockService.Ajustar(d.Producto, d.Cantidad, TipoMovimientoStock.Ingreso,
+                                     Datos.UsuarioActualNombre(), d.Observacion, ingreso.ID)
             Next
 
-            proveedor.UltimaCompra = ingreso.Fecha
-            proveedor.FechaUltimaOperacion = ingreso.Fecha
+            ' El proveedor es opcional, asi que sus datos de ultima compra solo se
+            ' tocan cuando hay alguien a quien pertainecen.
+            If proveedor IsNot Nothing Then
+                proveedor.UltimaCompra = ingreso.Fecha
+                proveedor.FechaUltimaOperacion = ingreso.Fecha
+            End If
 
-            ' El historial va a disco recien despues de aplicar el stock: si el
-            ' registro falla, la mercaderia igual quedo ingresada.
-            IngresoAlmacen.Guardar()
-            Try
-                MovimientoStockService.RegistrarIngreso(ingreso, Datos.UsuarioActualNombre())
-            Catch
-            End Try
+            If Not IngresoAlmacen.Guardar() Then
+                ' El ingreso quedo aplicado igual, pero el historico no se pudo
+                ' escribir. Se avisa para que no se pierda en silencio.
+                resultado.Advertencia =
+                    "El ingreso se registro, pero no se pudo guardar el historial en disco."
+            End If
 
             resultado.Ok = True
             resultado.Ingreso = ingreso
@@ -164,10 +167,15 @@ Namespace CafeteriaOS
     ''' <summary>
     ''' Resultado de registrar un ingreso. Devolver el dato y no un booleano permite que
     ''' quien llama muestre el numero de ingreso recien creado.
+    '''
+    ''' Advertencia es para los casos en que la operacion quedo aplicada pero algo en
+    ''' segundo plano fallo, por ejemplo escribir el historial en disco. No es un
+    ''' error: el stock ya cambio y hay que decirlo igual.
     ''' </summary>
     Public Class ResultadoIngreso
         Public Property Ok As Boolean
         Public Property Mensaje As String
+        Public Property Advertencia As String
         Public Property Ingreso As IngresoStock
     End Class
 
