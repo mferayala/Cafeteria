@@ -41,26 +41,20 @@ Namespace CafeteriaOS
         Public Property Movimientos As New List(Of MovimientoCaja)()
 
         ''' <summary>
-        ''' Todo lo que entró por ventas, sin diferenciar como se cobró.
-        '''
-        ''' El cobro de una deuda a cuenta cuenta acá adentro. Es plata que entro en esta
-        ''' caja y por eso tiene que estar en el saldo: si quedara afuera, el cierre
-        ''' mostraria menos plata de la que hay en el cajon y el saldo nunca cuadraria.
-        ''' Para el reporte se los separa con TotalCobrosDeuda.
+        ''' Ventas cobradas del mostrador. No incluye los cobros de deudas: son dos
+        ''' cosas distintas y mezcladas en un solo total el corte no dice la verdad.
         ''' </summary>
         Public ReadOnly Property TotalVentas As Decimal
             Get
-                Return Movimientos.
-                    Where(Function(m) m.Tipo = MovimientoCaja.TipoVenta OrElse
-                                   m.Tipo = MovimientoCaja.TipoCobroDeuda).
-                    Sum(Function(m) m.Monto)
+                Return Movimientos.Where(Function(m) m.Tipo = MovimientoCaja.TipoVenta).Sum(Function(m) m.Monto)
             End Get
         End Property
 
         ''' <summary>
-        ''' Parte de TotalVentas que corresponde a cobrar deudas ya existentes. Sale de
-        ''' ahi y no de un filtro aparte para que sea imposible que las dos cosas digan
-        ''' numeros distintos.
+        ''' Parte de las ventas de hoy que corresponde a saldar deudas ya existentes.
+        ''' Es plata que entro en esta caja y por eso suma al saldo, pero se muestra
+        ''' aparte para que en el corte se vea cuanto fue venta del dia y cuanto fue
+        ''' cobro de lo que ya estaba fiado.
         ''' </summary>
         Public ReadOnly Property TotalCobrosDeuda As Decimal
             Get
@@ -86,7 +80,7 @@ Namespace CafeteriaOS
 
         Public ReadOnly Property SaldoActual As Decimal
             Get
-                Return MontoInicial + TotalVentas - TotalEgresos
+                Return MontoInicial + TotalVentas + TotalCobrosDeuda - TotalEgresos
             End Get
         End Property
     End Class
