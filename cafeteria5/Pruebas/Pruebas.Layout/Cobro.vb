@@ -1,6 +1,7 @@
 Imports System
 Imports System.Collections.Generic
 Imports System.Linq
+Imports System.Drawing
 Imports System.Windows.Forms
 Imports CafeteriaOS
 
@@ -53,6 +54,26 @@ Namespace Prueba
                 combo.SelectedItem = MetodoPago.MercadoPago.ToString()
                 Revisar("Con Mercado Pago no se escribe el entregado",
                         Not entregado.Enabled)
+            End Using
+
+            ' --- "Dejar a cuenta" ocupa toda la fila y arranca a la izquierda ---
+            Using f As New CobroForm(total)
+                Dim chk = f.Controls.Find("chk.aCuenta", True).FirstOrDefault()
+                Revisar("El dialogo de cobro tiene la opcion de dejar a cuenta",
+                        chk IsNot Nothing)
+
+                If chk IsNot Nothing Then
+                    Dim caja = DirectCast(chk, CheckBox)
+                    Revisar("La opcion de dejar a cuenta no se angosta al texto",
+                            Not caja.AutoSize)
+                    Revisar("La opcion de dejar a cuenta ocupa toda la fila",
+                            caja.Dock = DockStyle.Fill)
+                    Revisar("El texto de dejar a cuenta arranca a la izquierda",
+                            caja.TextAlign = ContentAlignment.MiddleLeft)
+                    Revisar("Deja a cuenta se lee completo",
+                            caja.Text = "Dejar a cuenta (paga despues)")
+
+                End If
             End Using
 
             PruebasComboObjetos.Correr()

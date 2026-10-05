@@ -19,6 +19,11 @@ Namespace CafeteriaOS
             MinimizeBox = False
             MaximizeBox = False
             ClientSize = New Size(400, 330)
+            ' Sin esto WinForms escala con los valores por defecto y no con los que
+            ' escribe el Designer: a 125% o 150% la fuente crece y las columnas no,
+            ' y los labels quedan cortados.
+            AutoScaleMode = AutoScaleMode.Dpi
+            AutoScaleDimensions = New SizeF(96, 96)
             BackColor = Tema.BgPrincipal
             Font = Tema.Fuente(Tema.TamNormal)
             KeyPreview = True
@@ -51,11 +56,16 @@ Namespace CafeteriaOS
             lblCambio.Dock = DockStyle.Fill
             lblCambio.TextAlign = ContentAlignment.MiddleRight
 
+            ' AutoSize con Dock=Fill se contradicen: el checkbox queda con el ancho
+            ' justo del texto, pegado al centro de la celda. Con AutoSize apagado y
+            ' Dock=Fill toma todo el ancho de la fila y el texto arranca a la
+            ' izquierda, que es como tiene que leerse.
             chkACuenta = New CheckBox With {
                 .Name = "chk.aCuenta",
-                .Dock = DockStyle.Fill,
                 .Text = "Dejar a cuenta (paga despues)",
-                .AutoSize = True,
+                .AutoSize = False,
+                .Dock = DockStyle.Fill,
+                .TextAlign = ContentAlignment.MiddleLeft,
                 .UseVisualStyleBackColor = True
             }
             chkACuenta.TabStop = True
@@ -66,9 +76,15 @@ Namespace CafeteriaOS
                 Etiqueta("Total a cobrar"), lblTotal,
                 Etiqueta("Medio de pago"), cmbPago,
                 Etiqueta("Entregado"), txtEntregado,
-                Etiqueta("Cambio"), lblCambio,
-                New Label(), chkACuenta
+                Etiqueta("Cambio"), lblCambio
             })
+
+            ' "Dejar a cuenta" va debajo de la fila Cambio, ocupando las dos columnas
+            ' y pegado a la izquierda. Antes estaba en una celda con un Label vacio al
+            ' lado, asi que el checkbox quedaba encerrado en la mitad derecha de la
+            ' ventana y centrado en vez de recorrer el ancho.
+            cuerpo.Controls.Add(chkACuenta, 0, 4)
+            cuerpo.SetColumnSpan(chkACuenta, 2)
 
             btnCobrar = Tema.CrearBoton("Confirmar cobro", EstiloBoton.Exito, 150, 40)
             btnCancelar = Tema.CrearBoton("Volver", EstiloBoton.Sutil, 150, 40)

@@ -114,6 +114,7 @@ Namespace Prueba
             ElNombreDelNegocioSeMuestra()
             LaConfiguracionEsSoloDelAdministrador()
             ProveedoresNoOfreceIngreso()
+            EscaladoEnPantallasGrandes()
 
             Console.WriteLine()
             Console.WriteLine($"OK: {pruebas} pruebas, {problemas} problemas.")
@@ -578,6 +579,86 @@ Namespace Prueba
                 Case SeccionDashboard.Caja : Return New CajaPanel()
             End Select
             Throw New InvalidOperationException(seccion.ToString())
+        End Function
+
+        ''' <summary>
+        ''' Las ventanas fijas tienen que verse enteras en su tamano normal.
+        '''
+        ''' Se comprueba lo que se pidio y que antes no se comprobaba: que la ventana no se
+        ''' pueda maximizar, y que el alto de todas sus filas entre en el area visible. Si las
+        ''' filas piden mas espacio del que hay, el usuario tiene que scrollear para ver lo
+        ''' que quedo abajo, y eso es justamente lo que no debe pasar.
+        '''
+        ''' Solo tiene sentido cuando todas las filas tienen alto fijo: si hay una Percent, esa
+        ''' fila se acomoda al espacio que sobra y no desborda.
+        ''' </summary>
+        Sub EscaladoEnPantallasGrandes()
+            ' El ancho del rotulo se mide contra la fuente DE LA VENTANA, no contra la
+            ' ya agrandada. Este chequeo responde a una pregunta distinta: "si la fuente
+            ' de la app creciera, este rotulo seguiria entrando?". Para responder a la
+            ' que delegado el usuario -el texto se ve cortado hoy- alcanza con medir la
+            ' fuente normal contra el ancho real, y eso lo hace Medir() en Dialogos().
+            Dim cafe = Datos.ListaProductos.First(Function(p) p.Nombre.Contains("negro"))
+            Dim lista As New List(Of Func(Of Form))
+
+            lista.Add(Function() New ProductoEditorForm(Nothing))
+            lista.Add(Function() New ProductoEditorForm(cafe))
+            lista.Add(Function() New ReposicionStockForm(cafe))
+            lista.Add(Function() New IngresoStockForm(Nothing))
+            lista.Add(Function() New MovimientosStockForm(Nothing))
+            lista.Add(Function() New CategoriasForm())
+            lista.Add(Function() New ConfiguracionNegocioForm())
+            lista.Add(Function() New CobroForm(1000D))
+
+            For Each constructor In lista
+                Dim f As Form = constructor.Invoke()
+                f.StartPosition = FormStartPosition.Manual
+                f.Location = New Point(-4000, -4000)
+                f.ShowInTaskbar = False
+                f.Show()
+                Forzar(f)
+
+                Revisar(f.GetType().Name & " no se puede maximizar", Not f.MaximizeBox)
+
+                ' Todo el contenido tiene que entrar sin barra vertical. Solo se puede
+                ' comprobar cuando todas las filas tienen alto fijo: si hay una
+                ' Percent, esa fila se acomoda al espacio que sobra y no desborda.
+                Dim tabla = TablaRaiz(f)
+                If tabla IsNot Nothing Then
+                    Dim hayPercent = False
+                    Dim pedidos As Integer = 0
+                    For i = 0 To tabla.RowStyles.Count - 1
+                        Dim estilo = tabla.RowStyles(i)
+                        If estilo.SizeType = SizeType.Percent Then
+                            hayPercent = True
+                        ElseIf estilo.SizeType = SizeType.Absolute Then
+                            pedidos += CInt(estilo.Height)
+                        End If
+                    Next
+                    Dim visibles = tabla.ClientSize.Height - tabla.Padding.Vertical
+                    If Not hayPercent AndAlso pedidos > visibles + Tolerancia Then
+                        Console.WriteLine($"  [desborde] {f.GetType().Name}  las filas piden " &
+                                          $"{pedidos}px y la ventana da {visibles}px: " &
+                                          "hay que scrollear para ver todo")
+                        problemas += 1
+                    End If
+                End If
+
+                f.Close()
+            Next
+        End Sub
+
+        ''' <summary>
+        ''' El TableLayoutPanel raiz del formulario, o Nothing si no lo hay. Se busca el mas
+        ''' externo porque es el que reparte el alto disponible; los anidados manejan el suyo.
+        ''' </summary>
+        Function TablaRaiz(f As Form) As TableLayoutPanel
+            For Each c In f.Controls
+                If TypeOf c Is TableLayoutPanel Then
+                    Return DirectCast(c, TableLayoutPanel)
+                End If
+            Next
+            Return Nothing
         End Function
 
     End Module

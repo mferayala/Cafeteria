@@ -54,6 +54,11 @@ Namespace CafeteriaOS
             Text = "Proveedor"
             StartPosition = FormStartPosition.CenterParent
             ClientSize = New Size(920, 680)
+            ' Sin esto WinForms escala con los valores por defecto y no con los que
+            ' escribe el Designer: a 125% o 150% la fuente crece y las columnas no,
+            ' y los labels quedan cortados.
+            AutoScaleMode = AutoScaleMode.Dpi
+            AutoScaleDimensions = New SizeF(96, 96)
             MinimumSize = New Size(760, 560)
             BackColor = Tema.BgPrincipal
             Font = Tema.Fuente(Tema.TamNormal)

@@ -47,6 +47,7 @@ Namespace Prueba
             Try
                 PruebasCobro.Correr()
                 PruebasStock.Correr()
+                CamposQueNoEstanOcultos()
             Catch ex As Exception
                 Revisar("La ventana de cobro se construye sin excepcion", False)
                 Console.WriteLine(ex.ToString())
@@ -335,6 +336,53 @@ Dim proveedor = New Proveedor With {
                 fallos += 1
                 Console.WriteLine("  [FALLA] " & descripcion)
             End If
+        End Sub
+
+        ''' <summary>
+        ''' Ningun control declarado como campo puede quedar en Nothing.
+        '''
+        ''' Un campo Private del panel se puede tapar con un Dim local del mismo nombre dentro
+        ''' del metodo que arma la interfaz. El control se crea y se ve bien en pantalla, pero
+        ''' el campo sigue en Nothing: el error aparece despues, cuando un handler lo lee, y
+        ''' tira NullReferenceException en un lugar sin relacion con la causa.
+        '''
+        ''' Asi paso con chkPreparar en POSPanel: la linea 222 creaba un CheckBox local y la 596
+        ''' leia el campo. El chequeo es por reflexion: todo campo de tipo control tiene que
+        ''' quedar asignado despues de construir el panel y refrescarlo.
+        ''' </summary>
+        Sub CamposQueNoEstanOcultos()
+            Dim paneles As New List(Of PanelBase) From {
+                New POSPanel(), New StockPanel(), New CajaPanel(),
+                New ClientesPanel(), New ProveedoresPanel(),
+                New ReportesPanel(), New KanbanPanel()
+            }
+
+            Dim banderas = BindingFlags.Instance Or BindingFlags.NonPublic Or
+                           BindingFlags.Public
+
+            For Each panel In paneles
+                panel.Refrescar()
+                For Each campo In panel.GetType().GetFields(banderas)
+                    Dim tipo = campo.FieldType
+                    Dim esControl = tipo.Name.EndsWith("Box") OrElse
+                                    tipo.Name.EndsWith("Button") OrElse
+                                    tipo.Name = "NumericUpDown" OrElse
+                                    tipo.Name = "ListView" OrElse
+                                    tipo.Name = "DataGridView" OrElse
+                                    tipo.Name = "TabControl" OrElse
+                                    tipo.Name = "TabPage" OrElse
+                                    tipo.Name = "Panel" OrElse
+                                    tipo.Name = "TableLayoutPanel" OrElse
+                                    tipo.Name = "FlowLayoutPanel" OrElse
+                                    tipo.Name = "DateTimePicker"
+                    If Not esControl Then Continue For
+
+                    Dim valor = campo.GetValue(panel)
+                    Revisar($"{panel.GetType().Name}: el campo '{campo.Name}' " &
+                            $"({tipo.Name}) quedo asignado",
+                            valor IsNot Nothing)
+                Next
+            Next
         End Sub
 
     End Module

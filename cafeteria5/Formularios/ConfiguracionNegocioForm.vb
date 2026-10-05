@@ -89,6 +89,11 @@ Namespace CafeteriaOS
             MaximizeBox = False
             MinimizeBox = False
             ClientSize = New Size(620, 560)
+            ' Sin esto WinForms escala con los valores por defecto y no con los que
+            ' escribe el Designer: a 125% o 150% la fuente crece y las columnas no,
+            ' y los labels quedan cortados.
+            AutoScaleMode = AutoScaleMode.Dpi
+            AutoScaleDimensions = New SizeF(96, 96)
             BackColor = Tema.BgPrincipal
             Font = Tema.Fuente(Tema.TamNormal)
 

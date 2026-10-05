@@ -219,7 +219,7 @@ Namespace CafeteriaOS
             raiz.Controls.Add(Rotulo("Total"), 0, 7)
             raiz.Controls.Add(lblTotal, 1, 7)
 
-            Dim chkPreparar As New CheckBox With {
+            chkPreparar = New CheckBox With {
                 .Name = "chkPreparar",
                 .Text = "Requiere preparacion",
                 .AccessibleName = "Requiere preparacion",

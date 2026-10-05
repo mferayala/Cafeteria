@@ -113,8 +113,14 @@ Namespace CafeteriaOS
             Me.BackColor = Tema.BgPrincipal
             Me.ForeColor = Tema.TextoPrinc
             Me.FormBorderStyle = FormBorderStyle.FixedDialog
+            MaximizeBox = False
             Me.StartPosition = FormStartPosition.CenterParent
             Me.ClientSize = New Size(1000, 760)
+            ' Sin esto WinForms escala con los valores por defecto y no con los que
+            ' escribe el Designer: a 125% o 150% la fuente crece y las columnas no,
+            ' y los labels quedan cortados.
+            Me.AutoScaleMode = AutoScaleMode.Dpi
+            Me.AutoScaleDimensions = New SizeF(96, 96)
             Me.MinimizeBox = False
 
             Dim raiz As New TableLayoutPanel With {

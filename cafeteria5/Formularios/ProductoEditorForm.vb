@@ -62,7 +62,13 @@ Namespace CafeteriaOS
             FormBorderStyle = FormBorderStyle.FixedDialog
             MaximizeBox = False
             MinimizeBox = False
-            ClientSize = New Size(660, 560)
+            ' Sin esto WinForms escala con los valores por defecto y no con los que
+            ' escribe el Designer: a 125% o 150% la fuente crece y las columnas no,
+            ' y los labels quedan cortados.
+            AutoScaleMode = AutoScaleMode.Dpi
+            AutoScaleDimensions = New SizeF(96, 96)
+            ' 15 filas de alto explicito (ver mas abajo) entran sin scrollbar.
+            ClientSize = New Size(820, 660)
             BackColor = Tema.BgPrincipal
             Font = Tema.Fuente(Tema.TamNormal)
 
@@ -73,9 +79,19 @@ Namespace CafeteriaOS
                 .BackColor = Tema.BgPrincipal,
                 .Padding = New Padding(16)
             }
-            raiz.ColumnStyles.Add(New ColumnStyle(SizeType.Absolute, 130))
+            raiz.ColumnStyles.Add(New ColumnStyle(SizeType.Absolute, 175))
             raiz.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 100))
             raiz.ColumnStyles.Add(New ColumnStyle(SizeType.Absolute, 150))
+
+            ' RowCount era 15 sin declarar ni un RowStyle: las filas caian al alto por
+            ' defecto, que no es el alto del control, y los TextBox quedaban con la
+            ' mitad de la altura. Se declara una por fila. Los separadores (8 y 11) van
+            ' mas bajos porque no llevan ningun campo adentro.
+            For i = 0 To 14
+                raiz.RowStyles.Add(New RowStyle(SizeType.Absolute, 34))
+            Next
+            raiz.RowStyles(8) = New RowStyle(SizeType.Absolute, 26)
+            raiz.RowStyles(11) = New RowStyle(SizeType.Absolute, 26)
 
             txtNombre = Tema.CrearInput()
             txtMarca = Tema.CrearInput()

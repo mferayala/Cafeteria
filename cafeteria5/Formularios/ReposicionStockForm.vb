@@ -44,7 +44,17 @@ Namespace CafeteriaOS
             Text = "Reposición de stock"
             StartPosition = FormStartPosition.CenterParent
             FormBorderStyle = FormBorderStyle.FixedDialog
-            ClientSize = New Size(640, 420)
+            MaximizeBox = False
+            MinimizeBox = False
+            ' Sin esto WinForms calcula el escalado con los valores por defecto y no
+            ' con los que el Designer escribe: a 125% o 150% la fuente crece pero el
+            ' ancho de las columnas no, y "Código de barras" queda en "Código de".
+            AutoScaleMode = AutoScaleMode.Dpi
+            AutoScaleDimensions = New SizeF(96, 96)
+            ' 16 filas de 30 + separador 40 + botonera 44 = 504px de contenido, y el
+            ' alto viejo daba 388px utiles: sobraban 116px que se perdian detras de una
+            ' barra de desplazamiento. Con 560 de alto entran las 16 filas enteras.
+            ClientSize = New Size(720, 560)
             BackColor = Tema.BgPrincipal
             Font = Tema.Fuente(Tema.TamNormal)
 
@@ -58,13 +68,20 @@ Namespace CafeteriaOS
                 .BackColor = Tema.BgPrincipal,
                 .Padding = New Padding(16)
             }
-            raiz.ColumnStyles.Add(New ColumnStyle(SizeType.Absolute, 140))
+            ' La columna de etiqueta es lo bastante ancha para el texto mas largo
+            ' ("Código de barras", "Cantidad a reponer") con la fuente del tema. Con
+            ' 130 quedaban cortadas y con elipsis abajo.
+            raiz.ColumnStyles.Add(New ColumnStyle(SizeType.Absolute, 175))
             raiz.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 100))
             For i = 0 To 13
                 raiz.RowStyles.Add(New RowStyle(SizeType.Absolute, 30))
             Next
             raiz.RowStyles.Add(New RowStyle(SizeType.Absolute, 40))
             raiz.RowStyles.Add(New RowStyle(SizeType.Absolute, 44))
+            ' La observacion es el unico campo de varias lineas: necesita 56px de
+            ' alto para las tres lineas que se ven, y su fila media 30. Por ahi
+            ' aparecia cortado por abajo.
+            raiz.RowStyles(13) = New RowStyle(SizeType.Absolute, 56)
 
             txtCodigo = New TextBox With {.Dock = DockStyle.Fill, .ReadOnly = True}
             txtCodigoBarra = New TextBox With {.Dock = DockStyle.Fill, .ReadOnly = True}
@@ -99,7 +116,7 @@ Namespace CafeteriaOS
             txtStockResultante = New TextBox With {.Dock = DockStyle.Fill, .ReadOnly = True}
             AddRow(raiz, 12, "Stock resultante", txtStockResultante)
 
-            txtObservacion = New TextBox With {.Dock = DockStyle.Fill, .Multiline = True, .Height = 50}
+            txtObservacion = New TextBox With {.Dock = DockStyle.Fill, .Multiline = True, .ScrollBars = ScrollBars.None}
             AddRow(raiz, 13, "Observación", txtObservacion)
 
             lblUltimo = New Label With {.Dock = DockStyle.Fill, .TextAlign = ContentAlignment.MiddleLeft, .ForeColor = Tema.TextoSec, .Font = Tema.Fuente(Tema.TamMini)}

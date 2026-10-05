@@ -24,6 +24,11 @@ Namespace CafeteriaOS
             Text = "Corte de caja"
             StartPosition = FormStartPosition.CenterParent
             ClientSize = New Size(520, 660)
+            ' Sin esto WinForms escala con los valores por defecto y no con los que
+            ' escribe el Designer: a 125% o 150% la fuente crece y las columnas no,
+            ' y los labels quedan cortados.
+            AutoScaleMode = AutoScaleMode.Dpi
+            AutoScaleDimensions = New SizeF(96, 96)
             BackColor = Tema.BgPrincipal
             Font = Tema.Fuente(Tema.TamNormal)
             IniciarInterfaz()
