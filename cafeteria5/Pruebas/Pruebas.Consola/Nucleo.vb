@@ -1009,6 +1009,131 @@ Namespace Prueba
                 Datos.ListaProductos.Remove(conBebidaChica)
             End Try
 
+
+            ' --- Preparacion: es un eje aparte del pago, no una etapa del cobro ---
+            ' Va al final a proposito: las pruebas de caja de arriba comparan el saldo
+            ' con un numero absoluto, y este bloque cobra de verdad, asi que no puede
+            ' ejecutarse en el medio. Usa un producto propio para no mover el stock real.
+            Dim cafePrep As New Producto With {
+                .Nombre = "Cafe de Preparacion", .Precio = 1000D, .Stock = 10
+            }
+            Dim stockBase = cafePrep.Stock
+            Datos.ListaProductos.Add(cafePrep)
+            Try
+                ' Un pedido minimo reutilizable: el carrito del panel es privado y no
+                ' llega desde aca, asi que cada prueba arma el suyo.
+                Dim pedidoBase As New Pedido With {
+                    .FechaHora = DateTime.Now,
+                    .Items = New List(Of DetallePedido) From {
+                        New DetallePedido With {.Producto = cafePrep, .Cantidad = 1}
+                    }
+                }
+                Dim CobroDe = Function(Importe As Decimal) As ResultadoCobro
+                    Return New ResultadoCobro With {
+                        .MetodoPago = MetodoPago.Efectivo, .Total = Importe,
+                        .EfectivoRecibido = Importe, .CobradoAhora = True
+                    }
+                End Function
+
+                ' Venta de mostrador: paga y se va. No genera ningun pedido.
+                Dim ventaDirecta = VentaService.Crear(pedidoBase, CobroDe(pedidoBase.Total))
+                VentaService.Confirmar(ventaDirecta)
+                Revisar("La venta de mostrador no genera pedido",
+                        Not Datos.ListaPedidos.Any(Function(p) p.VentaID = ventaDirecta.ID))
+                Revisar("La venta de mostrador si descuenta stock",
+                        cafePrep.Stock = stockBase - 1)
+
+                ' Un numero por venta. Antes se armaba una venta para revisar el stock y
+                ' otra para confirmar: la primera se tiraba pero su numero ya estaba
+                ' gastado, asi que cada venta salia con un numero de mas.
+                Dim otraDirecta = VentaService.Crear(pedidoBase, CobroDe(pedidoBase.Total))
+                Revisar("Dos ventas seguidas llevan numeros consecutivos",
+                        otraDirecta.ID = ventaDirecta.ID + 1)
+
+                ' Venta que ademas se prepara: el pedido sale de la venta ya cobrada.
+                Dim ventaPrep = VentaService.Crear(New Pedido With {
+                    .FechaHora = DateTime.Now,
+                    .NombreCliente = "Ana",
+                    .TipoServicio = TipoServicio.EnElLocal,
+                    .Mesa = "7",
+                    .Items = New List(Of DetallePedido) From {
+                        New DetallePedido With {
+                            .Producto = cafePrep, .Cantidad = 2, .Especificaciones = "Sin azucar"}
+                    }
+                })
+                Dim stockAntesPrep = cafePrep.Stock
+                VentaService.AplicarCobro(ventaPrep, CobroDe(ventaPrep.Total))
+                Revisar("Aplicar el cobro deja la venta pagada", ventaPrep.EstaPagada)
+                VentaService.Confirmar(ventaPrep)
+
+                Dim pedidoPrep = PedidoService.CrearDesdeVenta(ventaPrep)
+                Revisar("El pedido arranca en preparacion",
+                        pedidoPrep.Estado = EstadoPedido.EnPreparacion)
+                Revisar("El pedido apunta a su venta", pedidoPrep.VentaID = ventaPrep.ID)
+                Revisar("El pedido hereda el descuento de la venta",
+                        pedidoPrep.Descuento = ventaPrep.Descuento)
+                Revisar("El pedido trae las mismas lineas que la venta",
+                        pedidoPrep.Items.Count = ventaPrep.Items.Count AndAlso
+                        pedidoPrep.Items(0).Especificaciones = "Sin azucar")
+                Revisar("El pedido conserva la mesa", pedidoPrep.Mesa = "7")
+
+                ' El tablero no toca el stock: ya bajo cuando se confirmo la venta.
+                Revisar("Crear el pedido no vuelve a descontar stock",
+                        cafePrep.Stock = stockAntesPrep - 2)
+                Revisar("El pedido marca que el stock ya esta descontado",
+                        pedidoPrep.StockDescontado)
+
+                ' Un pedido sin venta cobrada por detras es una nota al viento.
+                Dim ventaSinConfirmar = VentaService.Crear(pedidoBase, CobroDe(pedidoBase.Total))
+                Dim dioError As Boolean = False
+                Try
+                    PedidoService.CrearDesdeVenta(ventaSinConfirmar)
+                Catch
+                    dioError = True
+                End Try
+                Revisar("No se crea pedido de una venta sin confirmar", dioError)
+
+                ' Anular la venta tiene que llevarse su pedido: si no, el tablero manda
+                ' a preparar mercaderia que ya se devolvio.
+                VentaService.Anular(ventaPrep, "El cliente devolvio todo")
+                Revisar("Anular la venta da de baja su pedido",
+                        pedidoPrep.Estado = EstadoPedido.Cancelado)
+                Revisar("El motivo de la baja es el de la anulacion",
+                        pedidoPrep.MotivoCancelacion = "El cliente devolvio todo")
+                Revisar("Anular la venta devuelve el stock",
+                        cafePrep.Stock = stockAntesPrep)
+                Revisar("La venta anulada no queda en el tablero",
+                        Not PedidoService.Activos().Any(Function(p) p.ID = pedidoPrep.ID))
+
+                ' Anular dos veces no toca dos veces ni el pedido equivocado.
+                Dim ventaPrep2 = VentaService.Crear(pedidoBase, CobroDe(pedidoBase.Total))
+                VentaService.Confirmar(ventaPrep2)
+                Dim pedidoPrep2 = PedidoService.CrearDesdeVenta(ventaPrep2)
+                VentaService.Anular(ventaPrep2, "Primera")
+                VentaService.Anular(ventaPrep2, "Segunda")
+                Revisar("Anular dos veces deja el pedido dado de baja una sola vez",
+                        pedidoPrep2.Estado = EstadoPedido.Cancelado AndAlso
+                        pedidoPrep2.MotivoCancelacion = "Primera")
+
+                ' El cobro no se toca despues de confirmar: la venta ya esta en caja y
+                ' en el historial, y cambiarla a mano los deja discrepantes.
+                Dim ventaRegistrada = VentaService.Crear(pedidoBase, CobroDe(pedidoBase.Total))
+                VentaService.Confirmar(ventaRegistrada)
+                Dim cambioDespues As Boolean = False
+                Try
+                    VentaService.AplicarCobro(ventaRegistrada, New ResultadoCobro With {
+                        .MetodoPago = MetodoPago.Efectivo, .Total = pedidoBase.Total,
+                        .EfectivoRecibido = 0D, .CobradoAhora = False
+                    })
+                Catch
+                    cambioDespues = True
+                End Try
+                Revisar("No se puede cambiar el cobro de una venta ya registrada",
+                        cambioDespues)
+            Finally
+                Datos.ListaProductos.Remove(cafePrep)
+            End Try
+
             PruebasCategoria.Correr()
 
             Console.WriteLine()

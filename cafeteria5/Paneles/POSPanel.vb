@@ -28,6 +28,7 @@ Namespace CafeteriaOS
         Private WithEvents txtMesa As TextBox
         Private WithEvents txtCliente As TextBox
         Private WithEvents txtTelefono As TextBox
+        Private WithEvents chkPreparar As CheckBox
         Private WithEvents numDescuento As NumericUpDown
         Private WithEvents lstItems As ListView
         Private lblSubtotal As Label
@@ -218,11 +219,23 @@ Namespace CafeteriaOS
             raiz.Controls.Add(Rotulo("Total"), 0, 7)
             raiz.Controls.Add(lblTotal, 1, 7)
 
+            Dim chkPreparar As New CheckBox With {
+                .Name = "chkPreparar",
+                .Text = "Requiere preparacion",
+                .AccessibleName = "Requiere preparacion",
+                .AutoSize = True,
+                .ForeColor = Tema.TextoPrinc,
+                .Font = Tema.Fuente(Tema.TamMini),
+                .Margin = New Padding(4, 9, 12, 0),
+                .Checked = False,
+                .TabStop = True
+            }
+
             Dim btnLimpiar = Tema.CrearBoton("Limpiar", EstiloBoton.Neutro, 110, 40)
             Dim btnRegistrar = Tema.CrearBoton("Registrar y cobrar", EstiloBoton.Exito, 190, 40)
             AddHandler btnLimpiar.Click, Sub(s, e) NuevoPedido()
             AddHandler btnRegistrar.Click, Sub(s, e) RegistrarPedido()
-            Dim barra = UiKit.Botonera(btnLimpiar, btnRegistrar)
+            Dim barra = UiKit.Botonera(btnLimpiar, chkPreparar, btnRegistrar)
             raiz.Controls.Add(barra, 0, 8)
             raiz.SetColumnSpan(barra, 2)
 
@@ -538,10 +551,15 @@ Namespace CafeteriaOS
                 Return
             End If
 
-            ' La venta se arma antes de cobrar para poder revisar el deposito sobre el
-            ' objeto real que despues se va a confirmar. Si el stock no alcanza se avisa
-            ' y se corta sin abrir el cobro: antes se cobraba la venta completa y el
-            ' stock terminaba en cero con unidades que en realidad nunca salieron.
+            ' Los datos del cliente se leen ANTES de armar la venta. Antes se armaba una
+            ' venta, se cobraba, y se armaba otra con los campos ya escritos: la primera
+            ' se descartaba pero su numero ya estaba gastado, asi que cada venta salia
+            ' con un numero de mas.
+            pedidoEnCurso.NombreCliente = txtCliente.Text.Trim()
+            pedidoEnCurso.TelefonoCliente = ClienteService.NormalizarTelefono(txtTelefono.Text)
+            pedidoEnCurso.Mesa = If(pedidoEnCurso.TipoServicio = TipoServicio.EnElLocal,
+                                    txtMesa.Text.Trim(), String.Empty)
+
             Dim venta As Venta = Nothing
             Try
                 venta = VentaService.Crear(pedidoEnCurso)
@@ -551,6 +569,8 @@ Namespace CafeteriaOS
                 Return
             End Try
 
+            ' El stock se revisa antes de abrir el cobro, sobre el objeto real que
+            ' despues se confirma: si no alcanza se avisa y no se cobra nada.
             Dim faltantes = StockService.Faltantes(venta)
             If faltantes.Count > 0 Then
                 MessageBox.Show("No hay stock suficiente:" & vbCrLf &
@@ -565,15 +585,15 @@ Namespace CafeteriaOS
             Dim cobro = CobroForm.Pedir(venta.Total)
             If cobro Is Nothing Then Return
 
-            pedidoEnCurso.NombreCliente = txtCliente.Text.Trim()
-            pedidoEnCurso.TelefonoCliente = ClienteService.NormalizarTelefono(txtTelefono.Text)
-            pedidoEnCurso.MetodoPago = cobro.MetodoPago
-            pedidoEnCurso.Mesa = If(pedidoEnCurso.TipoServicio = TipoServicio.EnElLocal, txtMesa.Text.Trim(), String.Empty)
+            Try
+                VentaService.AplicarCobro(venta, cobro)
+            Catch ex As Exception
+                MessageBox.Show(ex.Message, "Venta", MessageBoxButtons.OK,
+                                MessageBoxIcon.Warning)
+                Return
+            End Try
 
-            ' El nombre y el telefono se leen del carrito, que es donde el usuario los
-            ' escribio: la venta ya habia quedado con vacio al armarla antes del cobro.
-            venta = VentaService.Crear(pedidoEnCurso, cobro)
-
+            Dim quierePreparacion = chkPreparar.Checked
             Try
                 ' Unico punto donde nace una venta y donde baja el stock. Confirmar
                 ' se deshace solo si algo falla: devuelve el stock, da de baja el
@@ -589,6 +609,8 @@ Namespace CafeteriaOS
                 Return
             End Try
 
+            If quierePreparacion Then RegistrarPreparacion(venta)
+
             NuevoPedido()
 
             Using f As New TicketForm(TicketService.ConstruirTicket(venta), "Ticket de la venta " & venta.Numero)
@@ -596,6 +618,32 @@ Namespace CafeteriaOS
             End Using
 
             lblStockBajo.Text = String.Empty
+        End Sub
+
+        ''' <summary>
+        ''' Manda la venta al tablero de preparacion.
+        '''
+        ''' Va DESPUES de confirmar la venta y no antes, a proposito. La venta es el hecho
+        ''' economico: ya esta cobrada y ya bajo el stock. Si el pedido fallara y se
+        ''' deshiciera la venta, el cliente tendria que volver a pagar por algo que ya se
+        ''' le entrego. Si en cambio falla la anotacion al tablero, la venta sigue siendo
+        ''' real y lo que hay que avisar es eso, claro y no en silencio.
+        ''' </summary>
+        Private Sub RegistrarPreparacion(venta As Venta)
+            Try
+                Dim pedido = PedidoService.CrearDesdeVenta(venta)
+                MessageBox.Show("Venta " & venta.Numero & " cobrada y enviada a preparacion." &
+                                vbCrLf & "Pedido N. " & pedido.ID & " en el tablero.",
+                                "Pedido", MessageBoxButtons.OK, MessageBoxIcon.Information)
+            Catch ex As Exception
+                MessageBox.Show(
+                    "La venta " & venta.Numero & " se cobro y esta registrada, pero no " &
+                    "pudo entrar al tablero de preparacion:" & vbCrLf & ex.Message &
+                    vbCrLf & vbCrLf &
+                    "No se dio de baja la venta: ya estaba cobrada. " &
+                    "Anotala a mano en el tablero para que se prepare.",
+                    "Pedido", MessageBoxButtons.OK, MessageBoxIcon.Error)
+            End Try
         End Sub
 
         #End Region

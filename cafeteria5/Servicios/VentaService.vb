@@ -81,8 +81,47 @@ Namespace CafeteriaOS
         End Function
 
         ''' <summary>
-        ''' Confirma la venta: le asigna numero, la registra, descuenta el stock y
-        ''' asienta el cobro en caja.
+        ''' Le aplica a una venta ya armada el resultado del cobro, sin volver a crearla.
+        '''
+        ''' Existe para no reservar dos numeros por venta. Antes el punto de venta armaba
+        ''' una venta para revisar el stock, cobraba, y armaba OTRA para confirmar: la
+        ''' primera se descartaba pero su numero ya estaba gastado, asi que cada venta
+        ''' salia con un numero impar de mas.
+        '''
+        ''' Solo se acepta mientras la venta no este registrada: despues de confirmar la
+        ''' venta ya esta en caja y en el historial, y cambiarle el cobro a mano
+        ''' dejaria el movimiento de caja diciendo una cosa y la venta otra.
+        ''' </summary>
+        Public Sub AplicarCobro(venta As Venta, cobro As ResultadoCobro)
+            If venta Is Nothing Then
+                Throw New ArgumentNullException(NameOf(venta))
+            End If
+            If cobro Is Nothing Then
+                Throw New ArgumentNullException(NameOf(cobro))
+            End If
+            If venta.EstaAnulada Then
+                Throw New InvalidOperationException("No se puede cobrar una venta anulada.")
+            End If
+            If Datos.ListaVentas.Contains(venta) Then
+                Throw New InvalidOperationException(
+                    "La venta " & venta.Numero & " ya esta registrada: no se le puede cambiar el cobro.")
+            End If
+
+            venta.MetodoPago = cobro.MetodoPago
+            venta.EfectivoRecibido = cobro.EfectivoRecibido
+            venta.Pago = If(cobro.CobradoAhora, EstadoPago.Pagada, EstadoPago.Pendiente)
+            venta.FueACuenta = Not cobro.CobradoAhora
+
+            ' Igual que en Crear: el total sale de las lineas, que ya estan cargadas.
+            ' Una venta pagada arranca con el total completo como cobrado, y una a
+            ' cuenta en cero.
+            venta.MontoPagado = If(cobro.CobradoAhora, venta.Total, 0D)
+        End Sub
+
+        ''' <summary>
+        ''' Confirma la venta: la registra, descuenta el stock y asienta el cobro en caja.
+        '''
+        ''' El numero ya esta reservado desde Crear, no se asigna aca.
         '''
         ''' Todo va en un solo bloque con devolucion en caso de fallo. Si algo se rompe a
         ''' mitad de camino, el stock vuelve y la venta no queda registrada ni cobrada:
@@ -158,6 +197,11 @@ Namespace CafeteriaOS
             venta.AnuladaFecha = DateTime.Now
             venta.AnuladaMotivo = If(String.IsNullOrWhiteSpace(motivo), "Sin motivo", motivo.Trim())
             venta.AnuladaUsuario = If(usuario, Datos.UsuarioActualNombre())
+
+            ' El pedido de preparacion se da de baja con su venta. Si no, el tablero
+            ' seguia mostrando un pedido cuya venta ya no existe, y alguien iba a
+            ' preparar mercaderia que ya se devolvio.
+            PedidoService.DarDeBajaPorVenta(venta.ID, venta.AnuladaMotivo)
         End Sub
 
         ''' <summary>
