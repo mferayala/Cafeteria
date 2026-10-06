@@ -43,7 +43,6 @@ Namespace CafeteriaOS
             StartPosition = FormStartPosition.CenterParent
             ' Redimensionable a proposito: es la unica de esta tanda que se usa para
             ' dar de alta Providers de verdad y la lista crece. Maximizar no.
-            MaximizeBox = False
             ClientSize = New Size(880, 620)
             ' Sin esto WinForms escala con los valores por defecto y no con los que
             ' escribe el Designer: a 125% o 150% la fuente crece y las columnas no,
@@ -406,7 +405,6 @@ Namespace CafeteriaOS
                 .StartPosition = FormStartPosition.CenterParent,
                 .FormBorderStyle = FormBorderStyle.FixedDialog,
                 .MinimizeBox = False,
-                .MaximizeBox = False,
                 .ClientSize = New Size(420, 140),
                 .BackColor = Tema.BgPrincipal,
                 .Font = Tema.Fuente(Tema.TamNormal)

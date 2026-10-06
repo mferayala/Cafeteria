@@ -15,9 +15,8 @@ Namespace CafeteriaOS
         Private Sub IniciarInterfaz()
             Text = "Cobrar pedido"
             StartPosition = FormStartPosition.CenterParent
-            FormBorderStyle = FormBorderStyle.FixedDialog
+            FormBorderStyle = FormBorderStyle.Sizable
             MinimizeBox = False
-            MaximizeBox = False
             ClientSize = New Size(400, 330)
             ' Sin esto WinForms escala con los valores por defecto y no con los que
             ' escribe el Designer: a 125% o 150% la fuente crece y las columnas no,

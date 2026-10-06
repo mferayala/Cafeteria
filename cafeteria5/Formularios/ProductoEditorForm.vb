@@ -68,7 +68,6 @@ Namespace CafeteriaOS
             Text = If(esNuevo, "Nuevo producto", "Editar producto")
             StartPosition = FormStartPosition.CenterParent
             FormBorderStyle = FormBorderStyle.FixedDialog
-            MaximizeBox = False
             MinimizeBox = False
             ' Sin esto WinForms escala con los valores por defecto y no con los que
             ' escribe el Designer: a 125% o 150% la fuente crece y las columnas no,
@@ -93,7 +92,7 @@ Namespace CafeteriaOS
             ' roba ancho a los campos: con 150 los TextBox quedaban en 100px de ancho,
             ' que no entra ni "Código de barras". El texto de sugerencia es corto
             ' ("Sugerido: $1.500") y se envuelve en dos lineas sin problema.
-            raiz.ColumnStyles.Add(New ColumnStyle(SizeType.Absolute, 150))
+            raiz.ColumnStyles.Add(New ColumnStyle(SizeType.Absolute, 96))
 
             ' RowCount era 15 sin declarar ni un RowStyle: las filas caian al alto por
             ' defecto, que no es el alto del control, y los TextBox quedaban con la
@@ -103,10 +102,10 @@ Namespace CafeteriaOS
             ' vacio al pie de la ventana. Se sube a 41 para que el formulario
             ' ocupe su alto sin apretar los campos.
             For i = 0 To 14
-                raiz.RowStyles.Add(New RowStyle(SizeType.Absolute, 34))
+                raiz.RowStyles.Add(New RowStyle(SizeType.Absolute, 41))
             Next
-            raiz.RowStyles(8) = New RowStyle(SizeType.Absolute, 26)
-            raiz.RowStyles(11) = New RowStyle(SizeType.Absolute, 26)
+            raiz.RowStyles(8) = New RowStyle(SizeType.Absolute, 30)
+            raiz.RowStyles(11) = New RowStyle(SizeType.Absolute, 30)
 
             txtNombre = Tema.CrearInput()
             txtMarca = Tema.CrearInput()

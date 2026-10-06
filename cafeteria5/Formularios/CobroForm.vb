@@ -21,9 +21,8 @@ Namespace CafeteriaOS
             Me.total = total
             Text = "Cobrar pedido"
             StartPosition = FormStartPosition.CenterParent
-            FormBorderStyle = FormBorderStyle.FixedDialog
+            FormBorderStyle = FormBorderStyle.Sizable
             MinimizeBox = False
-            MaximizeBox = False
             ClientSize = New Size(400, 330)
             BackColor = Tema.BgPrincipal
             Font = Tema.Fuente(Tema.TamNormal)

@@ -44,7 +44,6 @@ Namespace CafeteriaOS
             Text = "Reposición de stock"
             StartPosition = FormStartPosition.CenterParent
             FormBorderStyle = FormBorderStyle.FixedDialog
-            MaximizeBox = False
             MinimizeBox = False
             ' Sin esto WinForms calcula el escalado con los valores por defecto y no
             ' con los que el Designer escribe: a 125% o 150% la fuente crece pero el
@@ -54,7 +53,11 @@ Namespace CafeteriaOS
             ' 16 filas de 30 + separador 40 + botonera 44 = 504px de contenido, y el
             ' alto viejo daba 388px utiles: sobraban 116px que se perdian detras de una
             ' barra de desplazamiento. Con 560 de alto entran las 16 filas enteras.
-            ClientSize = New Size(720, 560)
+            ' Las 16 filas piden 530px (13 de 30, la observacion 56, botones 40 y
+            ' pie 44) y el padding vertical se come 32. Con 560 de alto quedaban
+            ' 528 utiles y faltaban 2: el formulario pedia scrollbar para dos
+            ' pixeles. Con 574 entran las 16 filas y sobran 12.
+            ClientSize = New Size(720, 574)
             BackColor = Tema.BgPrincipal
             Font = Tema.Fuente(Tema.TamNormal)
 

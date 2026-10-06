@@ -112,8 +112,7 @@ Namespace CafeteriaOS
             Me.Font = Tema.Fuente(Tema.TamNormal)
             Me.BackColor = Tema.BgPrincipal
             Me.ForeColor = Tema.TextoPrinc
-            Me.FormBorderStyle = FormBorderStyle.FixedDialog
-            MaximizeBox = False
+            Me.            FormBorderStyle = FormBorderStyle.Sizable
             Me.StartPosition = FormStartPosition.CenterParent
             Me.ClientSize = New Size(1000, 760)
             ' Sin esto WinForms escala con los valores por defecto y no con los que
@@ -279,7 +278,9 @@ Namespace CafeteriaOS
                 .BackColor = Color.Transparent
             }
             host.ColumnStyles.Add(New ColumnStyle(SizeType.Absolute, 85))
-            host.ColumnStyles.Add(New ColumnStyle(SizeType.Absolute, 100))
+            ' La cantidad va de 100 a 140px: con 100 no se lee comodo un numero de
+            ' tres digitos y las flechas del NumericUpDown quedan al borde.
+            host.ColumnStyles.Add(New ColumnStyle(SizeType.Absolute, 140))
             host.ColumnStyles.Add(New ColumnStyle(SizeType.Absolute, 170))
             host.ColumnStyles.Add(New ColumnStyle(SizeType.Absolute, 130))
             host.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 100))

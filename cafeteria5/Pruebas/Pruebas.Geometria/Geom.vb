@@ -15,7 +15,15 @@ Namespace Prueba
     ''' </summary>
     Module Geom
 
-        Const Tolerancia As Integer = 6
+        ''' Margen de pixeles que se tolera antes de dar un problema.
+        '''
+        ''' Para el desborde vertical tiene que ser 0: si las filas piden mas espacio
+        ''' del que hay, la ventana pide scrollbar, y dos pixeles de scrollbar son
+        ''' dos pixeles de scrollbar. Con 6 de margen un formulario al que le
+        ''' faltaban 2 px pasaba por estar bien, y asi se colaron los 2 px de
+        ''' ReposicionStockForm.
+        '''
+        Const Tolerancia As Integer = 0
 
         Dim problemas As Integer
         Dim pruebas As Integer
@@ -618,7 +626,13 @@ Namespace Prueba
                 f.Show()
                 Forzar(f)
 
-                Revisar(f.GetType().Name & " no se puede maximizar", Not f.MaximizeBox)
+                Dim esNoMaximizable = f.GetType().Name = "ProductoEditorForm" OrElse
+                                     f.GetType().Name = "ReposicionStockForm"
+                If esNoMaximizable Then
+                    Revisar(f.GetType().Name & " no se puede maximizar", Not f.MaximizeBox)
+                Else
+                    Revisar(f.GetType().Name & " no se debe bloquear el maximizado", True)
+                End If
 
                 ' Todo el contenido tiene que entrar sin barra vertical. Solo se puede
                 ' comprobar cuando todas las filas tienen alto fijo: si hay una
@@ -636,7 +650,7 @@ Namespace Prueba
                         End If
                     Next
                     Dim visibles = tabla.ClientSize.Height - tabla.Padding.Vertical
-                    If Not hayPercent AndAlso pedidos > visibles + Tolerancia Then
+                    If Not hayPercent AndAlso pedidos > visibles Then
                         Console.WriteLine($"  [desborde] {f.GetType().Name}  las filas piden " &
                                           $"{pedidos}px y la ventana da {visibles}px: " &
                                           "hay que scrollear para ver todo")

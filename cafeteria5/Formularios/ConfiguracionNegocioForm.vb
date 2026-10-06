@@ -85,10 +85,11 @@ Namespace CafeteriaOS
         Private Sub ArmarInterfaz()
             Text = "Configuracion del negocio"
             StartPosition = FormStartPosition.CenterParent
-            FormBorderStyle = FormBorderStyle.FixedDialog
-            MaximizeBox = False
-            MinimizeBox = False
-            ClientSize = New Size(620, 560)
+            FormBorderStyle = FormBorderStyle.Sizable
+            ' Con 620 de ancho los campos quedaban en 100px: no entra ni un nombre de
+            ' negocio. Se agranda la ventana en vez de achicar los campos, que es lo
+            ' que el usuario tiene que poder escribir.
+            ClientSize = New Size(760, 560)
             ' Sin esto WinForms escala con los valores por defecto y no con los que
             ' escribe el Designer: a 125% o 150% la fuente crece y las columnas no,
             ' y los labels quedan cortados.
@@ -189,8 +190,12 @@ Namespace CafeteriaOS
 
         ''' <summary>Campo de porcentaje: nunca negativo y con un tope razonable.</summary>
         Private Function Porcentaje(maximo As Decimal) As NumericUpDown
+            ' Un NumericUpDown con Dock=Fill toma el ancho minimo que dice su propia
+            ' altura de fila y no estira: con Dock=Fill quedaba en 100px de ancho
+            ' adentro de una celda mucho mas ancha, con el resto vacio al lado.
+            ' Dock=Top lo deja con su ancho util y el aire sobrante se ve igual.
             Dim n As New NumericUpDown With {
-                .Dock = DockStyle.Fill,
+                .Dock = DockStyle.Top,
                 .Minimum = 0D,
                 .Maximum = maximo,
                 .DecimalPlaces = 2,

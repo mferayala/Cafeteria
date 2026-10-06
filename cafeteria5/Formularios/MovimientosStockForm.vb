@@ -52,8 +52,7 @@ Namespace CafeteriaOS
             Text = If(productoFijado Is Nothing,
                       "Movimientos de stock", "Movimientos de " & productoFijado.NombreCompleto())
             StartPosition = FormStartPosition.CenterParent
-            FormBorderStyle = FormBorderStyle.FixedDialog
-            MaximizeBox = False
+            FormBorderStyle = FormBorderStyle.Sizable
             MinimizeBox = False
             ClientSize = New Size(1080, 640)
             ' Sin esto WinForms escala con los valores por defecto y no con los que
