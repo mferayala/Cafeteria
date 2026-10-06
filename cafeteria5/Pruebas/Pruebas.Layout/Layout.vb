@@ -30,7 +30,18 @@ Namespace Prueba
         }
 
         <STAThread>
-        Sub Main()
+        Sub Main(args As String())
+            ' Con un argumento no se corre la suite: se corre el flujo REAL de un
+            ' escenario y se sale. Asi el proceso hijo que lanza
+            ' PruebasProductoEditor entra por aca. El motivo de que vaya aparte es
+            ' que una de esas pruebas dispara un StackOverflowException, que en .NET
+            ' no se puede atrapar y mata el proceso de una. Si corriera aqui, el
+            ' runner entero moriria sin poder reportar nada.
+            If args IsNot Nothing AndAlso args.Length > 0 Then
+                PruebasProductoEditor.MainHijo(args(0))
+                Return
+            End If
+
             Application.EnableVisualStyles()
             ' Los datos van a una carpeta propia y no a la de quien esta probando.
             ' Va antes de tocar el archivo: Nucleo.vb borra el historial al arrancar para
@@ -48,6 +59,7 @@ Namespace Prueba
                 PruebasCobro.Correr()
                 PruebasStock.Correr()
                 CamposQueNoEstanOcultos()
+                PruebasProductoEditor.Correr()
             Catch ex As Exception
                 Revisar("La ventana de cobro se construye sin excepcion", False)
                 Console.WriteLine(ex.ToString())

@@ -22,6 +22,14 @@ Namespace CafeteriaOS
         Private producto As Producto
         Private esNuevo As Boolean
 
+        ''' <summary>
+        ''' Evita la reentrada en CargarSugerencias y CargarCategorias. Los handlers de
+        ''' TextChanged de los combos disparan codigo que vuelve a escribir en los
+        ''' combos, y si eso ocurre mientras ya estamos cargando se corta: sin esto
+        ''' se entra recursivamente hasta que se agota la pila.
+        ''' </summary>
+        Private cargandoSugerencias As Boolean
+
         Private txtNombre As TextBox
         Private txtMarca As TextBox
         Private txtCodigoBarra As TextBox
@@ -81,12 +89,19 @@ Namespace CafeteriaOS
             }
             raiz.ColumnStyles.Add(New ColumnStyle(SizeType.Absolute, 175))
             raiz.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 100))
+            ' La columna del texto de sugerencia se achico de 150 a 96px porque es la que
+            ' roba ancho a los campos: con 150 los TextBox quedaban en 100px de ancho,
+            ' que no entra ni "Código de barras". El texto de sugerencia es corto
+            ' ("Sugerido: $1.500") y se envuelve en dos lineas sin problema.
             raiz.ColumnStyles.Add(New ColumnStyle(SizeType.Absolute, 150))
 
             ' RowCount era 15 sin declarar ni un RowStyle: las filas caian al alto por
             ' defecto, que no es el alto del control, y los TextBox quedaban con la
             ' mitad de la altura. Se declara una por fila. Los separadores (8 y 11) van
             ' mas bajos porque no llevan ningun campo adentro.
+            ' Con 34 de alto las 15 filas piden 494px en 628 utiles: quedaban 134px de
+            ' vacio al pie de la ventana. Se sube a 41 para que el formulario
+            ' ocupe su alto sin apretar los campos.
             For i = 0 To 14
                 raiz.RowStyles.Add(New RowStyle(SizeType.Absolute, 34))
             Next
@@ -111,6 +126,11 @@ Namespace CafeteriaOS
             txtSubcategoria.DropDownStyle = ComboBoxStyle.DropDown
             AddHandler txtCategoria.TextChanged, Sub() CargarSugerencias()
             AddHandler txtCosto.TextChanged, Sub() ActualizarSugerido()
+
+            ' Las categorias se cargan una sola vez y antes de que el handler de
+            ' TextChanged pueda dispararse. Cargar la lista no depende de que se haya
+            ' elegido nada, asi que no tiene por que repetirse en cada cambio.
+            CargarCategorias()
 
             AddHandler txtDescripcion.KeyDown, Sub(se, ev) GuardarConEnter(ev)
 
@@ -205,28 +225,62 @@ Namespace CafeteriaOS
             End If
         End Sub
 
-        ''' <summary>Ofrece las categorias y subcategorias que ya existen.</summary>
+        ''' <summary>
+        ''' Ofrece las categorias y subcategorias que ya existen.
+        '''
+        ''' El bug era un StackOverflowException al elegir categoria. txtCategoria tiene
+        ''' un handler de TextChanged (linea 119) que llama a este metodo, y aca al final
+        ''' se le reasignaba txtCategoria.Text para poner de vuelta lo que el usuario
+        ''' habia elegido. Reasignar el Text de un ComboBox dispara TextChanged otra
+        ''' vez, el handler llama otra vez a este metodo, y asi hasta que se acaba la
+        ''' pila. El sintoma aparecia en Items.Add (linea 221) porque ahi se profundiza
+        ''' la recursion, no porque esa linea tuviera nada de malo.
+        '''
+        ''' Dos cosas lo arreglan. La primera es que la lista de categorias no depende
+        ''' de nada: se carga una sola vez y no se vuelve a tocar, asi que este metodo
+        ''' ya no reescribe txtCategoria y el ciclo no puede formarse. La segunda es la
+        ''' bandera de reentrada, que cubre el caso general de que un handler dispare
+        ''' otro.
+        '''
+        ''' No va try/catch: en .NET un StackOverflowException no se puede capturar, el
+        ''' runtime terminates el proceso. La unica defensa es no llegar a el.
+        ''' </summary>
         Private Sub CargarSugerencias()
-            Dim categoriaActual = Si(TextoDe(txtCategoria), "")
+            If cargandoSugerencias Then Return
+            cargandoSugerencias = True
+            Try
+                ' Las subcategorias si dependen de la categoria elegida, asi que
+                ' esta parte va cada vez que el usuario elige otra.
+                Dim subActual = Si(TextoDe(txtSubcategoria), "")
+                txtSubcategoria.Items.Clear()
+                For Each s In ProductoService.Subcategorias(Si(TextoDe(txtCategoria), ""))
+                    txtSubcategoria.Items.Add(s)
+                Next
+                txtSubcategoria.Text = subActual
+            Finally
+                cargandoSugerencias = False
+            End Try
+        End Sub
 
-            txtCategoria.Items.Clear()
-            For Each c In ProductoService.Categorias()
-                txtCategoria.Items.Add(c)
-            Next
-
-            Dim subActual = Si(TextoDe(txtSubcategoria), "")
-            txtSubcategoria.Items.Clear()
-            For Each s In ProductoService.Subcategorias(categoriaActual)
-                txtSubcategoria.Items.Add(s)
-            Next
-
-            txtCategoria.Text = categoriaActual
-            txtSubcategoria.Text = subActual
+        ''' <summary>
+        ''' Carga las categorias del catalogo. Se llama una unica vez, al armar la
+        ''' pantalla. Antes esto vivia dentro de CargarSugerencias y se re-ejecutaba en
+        ''' cada cambio de texto de la categoria.
+        ''' </summary>
+        Private Sub CargarCategorias()
+            If cargandoSugerencias Then Return
+            cargandoSugerencias = True
+            Try
+                txtCategoria.Items.Clear()
+                For Each c In ProductoService.Categorias()
+                    txtCategoria.Items.Add(c)
+                Next
+            Finally
+                cargandoSugerencias = False
+            End Try
         End Sub
 
         Private Sub CargarDatos()
-            CargarSugerencias()
-
             If producto Is Nothing Then
                 txtUnidad.Text = "un"
                 txtStock.Value = 0
