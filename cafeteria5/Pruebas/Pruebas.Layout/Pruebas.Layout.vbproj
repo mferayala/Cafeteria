@@ -42,6 +42,7 @@
     <Compile Include="Cobro.vb" />
     <Compile Include="ProductoEditor.vb" />
     <Compile Include="ProductoEditorCampos.vb" />
+    <Compile Include="PosVenta.vb" />
   </ItemGroup>
 
 </Project>

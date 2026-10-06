@@ -38,7 +38,9 @@ Namespace Prueba
             ' no se puede atrapar y mata el proceso de una. Si corriera aqui, el
             ' runner entero moriria sin poder reportar nada.
             If args IsNot Nothing AndAlso args.Length > 0 Then
-                If args(0) = "guardar-precio" Then
+                If args(0) = "pos-venta" Then
+                    PruebasPosVentaBugC.MainHijo(args)
+                ElseIf args(0) = "guardar-precio" Then
                     PruebasProductoEditorPrecios.MainHijoGuardar()
                 Else
                     PruebasProductoEditor.MainHijo(args(0))
@@ -65,6 +67,7 @@ Namespace Prueba
                 CamposQueNoEstanOcultos()
                 PruebasProductoEditor.Correr()
                 PruebasProductoEditorPrecios.Correr()
+                PruebasPosVentaBugC.Correr()
             Catch ex As Exception
                 Revisar("La ventana de cobro se construye sin excepcion", False)
                 Console.WriteLine(ex.ToString())
