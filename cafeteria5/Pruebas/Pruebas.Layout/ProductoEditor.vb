@@ -28,6 +28,15 @@ Namespace Prueba
         End Sub
 
         ''' <summary>
+        ''' El padre tiene que poder confirmar que el hijo hizo lo que se le pidio y
+        ''' no otro camino. Si el hijo ignora el escenario y siempre arma un producto
+        ''' nuevo, la prueba de "editar" pasa en verde probando el alta: un test que
+        ''' miente es peor que no tener test. Por eso el hijo anuncia con que producto
+        ''' abrio la pantalla y el padre lo verifica.
+        ''' </summary>
+        Const EtiquetaEdicion As String = "editando el producto"
+
+        ''' <summary>
         ''' El bug: txtCategoria.TextChanged (linea 119) llama a CargarSugerencias, y
         ''' CargarSugerencias escribe txtCategoria.Text (linea 230) para restaurar lo
         ''' que el usuario eligio. Escribir el Text vuelve a disparar TextChanged, que
@@ -47,12 +56,13 @@ Namespace Prueba
                 Console.WriteLine("    salida del hijo: " & r.Salida.Trim())
             End If
 
-            ' El fix es que CargarSugerencias se invoque una sola vez por cambio de
-            ' categoria. Antes de arreglarlo eran cientos de llamadas y el proceso
-            ' mueria; ahora tiene que ser exactamente una.
-            Dim llamadas = ContarOcurrencias(r.Salida, "llamadas a CargarSugerencias")
-            Revisar($"Elegir una categoria invoca CargarSugerencias una sola vez " &
-                    $"(fueron {llamadas})", llamadas = 1)
+            ' El fix es que CargarSugerencias se invoque un numero acotado de veces
+            ' por cambio de categoria. Antes de arreglarlo eran cientos de llamadas
+            ' y el proceso moria; ahora tiene que quedar debajo del tope.
+            Dim llamadas = LeerNumeroReportado(r.Salida, "llamadas a CargarSugerencias")
+            Revisar($"Elegir una categoria mantiene acotadas las llamadas a " &
+                    $"CargarSugerencias (fueron {llamadas}, tope {TopeLlamadas})",
+                    llamadas >= 0 AndAlso llamadas <= TopeLlamadas)
         End Sub
 
         ''' <summary>
@@ -70,9 +80,17 @@ Namespace Prueba
                 Console.WriteLine("    salida del hijo: " & r.Salida.Trim())
             End If
 
-            Dim llamadas = ContarOcurrencias(r.Salida, "llamadas a CargarSugerencias")
-            Revisar($"Editar un producto existente invoca CargarSugerencias una sola " &
-                    $"vez (fueron {llamadas})", llamadas = 1)
+            ' Antes de mirar el contador se verifica que el hijo haya abierto la
+            ' pantalla de edicion y no la de alta. Si el escenario se ignorara,
+            ' el contador dariia 1 igual y la prueba passaria sin probar nada.
+            Dim abrioEdicion = r.Salida.Contains(EtiquetaEdicion)
+            Revisar("Editar Producto abre la pantalla con un producto del catalogo " &
+                    "y no arma uno nuevo", abrioEdicion)
+
+            Dim llamadas = LeerNumeroReportado(r.Salida, "llamadas a CargarSugerencias")
+            Revisar($"Editar un producto existente mantiene acotadas las llamadas a " &
+                    $"CargarSugerencias (fueron {llamadas}, tope {TopeLlamadas})",
+                    llamadas >= 0 AndAlso llamadas <= TopeLlamadas)
         End Sub
 
         ''' <summary>
@@ -119,17 +137,53 @@ Namespace Prueba
             Public ReadOnly Salida As String
         End Class
 
-        Function ContarOcurrencias(texto As String, aguja As String) As Integer
-            Dim n = 0
-            Dim i = 0
-            While True
-                i = texto.IndexOf(aguja, i, StringComparison.Ordinal)
-                If i < 0 Then Exit While
-                n += 1
-                i += aguja.Length
+        ''' <summary>
+        ''' Saca el numero que el hijo reporto. Contar cuantas veces aparece la frase
+        ''' "llamadas a CargarSugerencias" no sirve: esa frase aparece una vez por
+        ''' linea, asi que el contador daba 1 siempre, el valor real fuera 1 o 500, y
+        ''' la prueba pasaba igual. Hay que leer el numero.
+        ''' </summary>
+        Function LeerNumeroReportado(texto As String, etiqueta As String) As Integer
+            Dim i = texto.IndexOf(etiqueta, StringComparison.Ordinal)
+            If i < 0 Then Return -1
+            i = texto.IndexOf("=", i, StringComparison.Ordinal)
+            If i < 0 Then Return -1
+            i += 1
+            ' El hijo escribe "= 2" con espacio: sin saltearlo el primer caracter
+            ' no es un digito, el While no avanza nunca y la funcion devuelve -1
+            ' como si el numero no estuviera.
+            While i < texto.Length AndAlso (texto(i) = " "c OrElse texto(i) = vbTab)
+                i += 1
             End While
-            Return n
+            Dim fin = i
+            While fin < texto.Length AndAlso
+                  (Char.IsDigit(texto(fin)) OrElse texto(fin) = "-")
+                fin += 1
+            End While
+            If fin = i Then Return -1
+            Dim n As Integer
+            If Integer.TryParse(texto.Substring(i, fin - i), n) Then Return n
+            Return -1
         End Function
+
+        ''' <summary>
+        ''' Cuantas entradas a CargarSugerencias se permiten por cada eleccion de
+        ''' categoria.
+        '''
+        ''' El numero NO es 1, y no por un defecto de la aplicacion: al escribir el
+        ''' Text de un ComboBox, WinForms dispara TextChanged, y despues, al resolver
+        ''' el SelectedIndex, vuelve a escribir el Text y dispara TextChanged otra
+        ''' vez. Son dos eventos de la misma eleccion del usuario, y cada uno entra una
+        ''' vez a CargarSugerencias. El flag cargandoSugerencias evita que una entrada
+        ''' se anide dentro de otra; no puede (y no debe) evitar dos entradas
+        ''' sucesivas.
+        '''
+        ''' Lo que el arreglo garantiza es que el numero este acotado. Antes eran
+        ''' cientos y el proceso moria por stack overflow; ahora son 2. Por eso el
+        ''' techo es 4: holgado para no depender de detalles de WinForms, y estrecho
+        ''' para seguir detectando la reentrada.
+        ''' </summary>
+        Const TopeLlamadas As Integer = 4
 
         ''' <summary>
         ''' Cuerpo del proceso hijo. Simula lo que hace el usuario de verdad: crea el
@@ -152,7 +206,16 @@ Namespace Prueba
             ' formulario y el hijo tiene que|reportar cuantas veces se entro.
             Dim archivoContador = Path.Combine(carpeta, "contador.txt")
 
-            Using f As New ProductoEditorForm(Nothing)
+            ' En "editar" se abre la pantalla con un producto del catalogo, que es
+            ' exactamente lo que hace el usuario al tocar Editar. Con Nothing la
+            ' pantalla arma un alta nueva y el camino de edicion no se ejercita.
+            Dim productoAEditar As Producto = Nothing
+            If escenario = "editar" Then
+                productoAEditar = Datos.ListaProductos.FirstOrDefault(
+                                     Function(p) Not String.IsNullOrWhiteSpace(p.Categoria))
+            End If
+
+            Using f As New ProductoEditorForm(productoAEditar)
                 f.Show()
                 ForzarLayout(f)
 
@@ -162,11 +225,27 @@ Namespace Prueba
                     Return
                 End If
 
+                If productoAEditar IsNot Nothing Then
+                    Console.WriteLine(EtiquetaEdicion & " " & productoAEditar.ID &
+                                      " '" & productoAEditar.Nombre & "' categoria '" &
+                                      productoAEditar.Categoria & "'")
+                Else
+                    Console.WriteLine("armando un producto nuevo")
+                End If
+
                 Instrumentar(f, combo, archivoContador)
 
-                ' Esto es lo que hace el usuario: elige una categoria. Escribir el
-                ' Text del combo dispara TextChanged, que es el ciclo del bug.
-                combo.Text = ProductoService.Categorias().First()
+                ' Esto es lo que hace el usuario: elige una categoria. Se elige una
+                ' DISTINTA a la que ya tiene, porque en un combo escribir el mismo
+                ' texto que ya tiene no dispara TextChanged y la prueba pasaria sin
+                ' haber recorrido el camino del bug.
+                Dim actual = If(combo.Text, "")
+                Dim categorias = ProductoService.Categorias()
+                Dim elegida = categorias.FirstOrDefault(
+                                  Function(c) Not String.Equals(c, actual,
+                                                               StringComparison.CurrentCultureIgnoreCase))
+                If elegida Is Nothing Then elegida = categorias.First()
+                combo.Text = elegida
 
                 ForzarLayout(f)
 
