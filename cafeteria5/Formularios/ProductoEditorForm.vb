@@ -313,9 +313,7 @@ Namespace CafeteriaOS
         ''' </summary>
         Private Sub ActualizarSugerido()
             Dim costo As Decimal
-            If Not Decimal.TryParse(Si(TextoDe(txtCosto), "").Replace(".", ","),
-                                    NumberStyles.Number, CultureInfo.CurrentCulture,
-                                    costo) Then
+            If Not LeerPrecio(TextoDe(txtCosto), costo) Then
                 lblSugerido.Text = ""
                 Return
             End If
@@ -357,16 +355,14 @@ Namespace CafeteriaOS
             Dim costo As Decimal
             Dim venta As Decimal
 
-            If Not Decimal.TryParse(Si(TextoDe(txtCosto), "").Replace(".", ","),
-                                    NumberStyles.Number, CultureInfo.CurrentCulture, costo) Then
+            If Not LeerPrecio(TextoDe(txtCosto), costo) Then
                 MessageBox.Show("El precio de costo tiene que ser un numero.", "Producto",
                                 MessageBoxButtons.OK, MessageBoxIcon.Warning)
                 txtCosto.Focus()
                 Return
             End If
 
-            If Not Decimal.TryParse(Si(TextoDe(txtVenta), "").Replace(".", ","),
-                                    NumberStyles.Number, CultureInfo.CurrentCulture, venta) Then
+            If Not LeerPrecio(TextoDe(txtVenta), venta) Then
                 MessageBox.Show("El precio de venta tiene que ser un numero.", "Producto",
                                 MessageBoxButtons.OK, MessageBoxIcon.Warning)
                 txtVenta.Focus()
@@ -397,6 +393,36 @@ Namespace CafeteriaOS
 
         Private Shared Function TextoDe(ctrl As Control) As String
             Return If(ctrl.Text, "").Trim()
+        End Function
+
+        ''' <summary>
+        ''' Lee un precio escrito en la pantalla.
+        '''
+        ''' Antes se hacia Replace(".", ",") sobre el texto antes de parsearlo. Eso
+        ''' rompia el numero: la pantalla escribe el precio con ToString("N2"), que en
+        ''' es-AR ya sale formateado ("3.000,00"), y el Replace convertia ese "3.000,00"
+        ''' en "3,000,00", que no es un numero. El TryParse fallaba, Guardar volvia con
+        ''' la alerta del precio y no se guardaba NADA. Por eso editar un producto con
+        ''' precio de 1000 para arriba era imposible, y el usuario lo atribuia a los
+        ''' campos que habia tocado.
+        '''
+        ''' No hace falta "arreglar" nada: el texto se lee tal cual esta, primero con
+        ''' la configuracion regional de la maquina (que entiende "3.000,00" y
+        ''' "3000,50"), y si no, con la invariante (para un equipo en ingles, donde
+        ''' "3000.50" es el decimal). Reemplazar caracteres a mano es lo que causaba
+        ''' el problema, asi que no se reemplazan.
+        ''' </summary>
+        Private Shared Function LeerPrecio(texto As String, ByRef valor As Decimal) As Boolean
+            Dim t = Si(texto, "").Trim()
+            If t.Length = 0 Then Return False
+
+            If Decimal.TryParse(t, NumberStyles.Number,
+                                CultureInfo.CurrentCulture, valor) Then
+                Return True
+            End If
+
+            Return Decimal.TryParse(t, NumberStyles.Number,
+                                    CultureInfo.InvariantCulture, valor)
         End Function
 
         Private Shared Function Si(texto As String, porDefecto As String) As String

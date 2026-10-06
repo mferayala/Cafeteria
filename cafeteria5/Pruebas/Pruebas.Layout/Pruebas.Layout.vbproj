@@ -41,6 +41,7 @@
     <Compile Include="Layout.vb" />
     <Compile Include="Cobro.vb" />
     <Compile Include="ProductoEditor.vb" />
+    <Compile Include="ProductoEditorCampos.vb" />
   </ItemGroup>
 
 </Project>
