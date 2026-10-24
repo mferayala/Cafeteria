@@ -65,6 +65,7 @@ Namespace Prueba
                 PruebasCobro.Correr()
                 PruebasStock.Correr()
                 CamposQueNoEstanOcultos()
+                CamposOcupanSuCelda()
                 PruebasProductoEditor.Correr()
                 PruebasProductoEditorPrecios.Correr()
                 PruebasPosVentaBugC.Correr()
@@ -402,6 +403,92 @@ Dim proveedor = New Proveedor With {
                             $"({tipo.Name}) quedo asignado",
                             valor IsNot Nothing)
                 Next
+            Next
+        End Sub
+
+        ''' <summary>
+        ''' Un campo de entrada tiene que ocupar la celda donde esta puesto.
+        '''
+        ''' WinForms le da a un TextBox o ComboBox sin Dock un ancho por defecto de
+        ''' 100px, y dentro de una celda de 500px el control queda diminuto al lado
+        ''' de un vacio enorme. No se nota mirando el codigo: el formulario se ve
+        ''' "correcto" y el problema aparece recien al usarlo. Por eso se mide el
+        ''' ancho real contra el de la celda.
+        '''
+        ''' La tecnica del bug era exactamente esa: Tema.CrearInput y Tema.CrearCombo
+        ''' no fijaban Dock, asi que los 67 campos que los usan quedaban en 100px.
+        ''' </summary>
+        Sub CamposOcupanSuCelda()
+            Dim ventana As New Size(1200, 800)
+            Dim limiteInferior = 120
+            Dim nombres As New List(Of String) From {
+                "ProductoEditorForm", "IngresoStockForm",
+                "ReposicionStockForm", "ConfiguracionNegocioForm"
+            }
+
+            For Each nombre In nombres
+                Using f As Control = AbrirVentana(nombre)
+                    ' Los formularios de ancho fijo se miden con el ancho que
+                    ' declaran; los de percentage, con uno de dashboard.
+                    If TypeOf f Is Form Then
+                        DirectCast(f, Form).ClientSize = New Size(760, 620)
+                    End If
+                    f.Show()
+                    ForzarLayout(f)
+
+                    For Each c In Descendientes(f)
+                        If Not c.Visible Then Continue For
+                        Dim esEntrada = TypeOf c Is TextBox OrElse TypeOf c Is ComboBox
+                        If Not esEntrada Then Continue For
+                        ' NumericUpDown tiene un UpDownEdit interno que es mas angosto
+                        ' que el control y no es un campo: se ignora.
+                        If c.Name <> "th.campo" Then Continue For
+
+                        Dim padre = TryCast(c.Parent, Control)
+                        If padre Is Nothing Then Continue For
+                        Revisar($"{nombre}: '{c.Name}' esta dockeado para " &
+                                $"ocupar su celda",
+                                c.Dock = DockStyle.Fill OrElse
+                                c.Dock = DockStyle.Top OrElse
+                                c.Dock = DockStyle.None)
+                        Revisar($"{nombre}: '{c.Name}' mide al menos " &
+                                $"{limiteInferior}px de ancho (mide {c.Width}px)",
+                                c.Width >= limiteInferior)
+                    Next
+                    If TypeOf f Is Form Then DirectCast(f, Form).Close()
+                End Using
+            Next
+        End Sub
+
+        Function AbrirVentana(nombre As String) As Control
+            Select Case nombre
+                Case "ProductoEditorForm"
+                    Return New ProductoEditorForm(Nothing)
+                Case "IngresoStockForm"
+                    Return New IngresoStockForm(Nothing)
+                Case "ReposicionStockForm"
+                    Return New ReposicionStockForm(Nothing)
+                Case Else
+                    Return New ConfiguracionNegocioForm()
+            End Select
+        End Function
+
+        Function Descendientes(control As Control) As List(Of Control)
+            Dim lista As New List(Of Control)
+            For Each hijo As Control In control.Controls
+                lista.Add(hijo)
+                lista.AddRange(Descendientes(hijo))
+            Next
+            Return lista
+        End Function
+
+        Sub ForzarLayout(control As Control)
+            For i = 1 To 4
+                control.PerformLayout()
+                For Each hijo As Control In control.Controls
+                    hijo.PerformLayout()
+                Next
+                Application.DoEvents()
             Next
         End Sub
 

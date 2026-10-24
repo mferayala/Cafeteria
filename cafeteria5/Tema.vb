@@ -259,12 +259,19 @@ Namespace CafeteriaOS
                 .Height = 30,
                 .Margin = New Padding(0)
             }
+            ' Sin Dock, un TextBox se queda con el ancho por defecto de WinForms
+            ' (100px) adentro de una celda que puede medir 500px: el campo queda
+            ' diminuto al lado de un vacio enorme. Dockearlo aca y no en cada
+            ' llamada hace que todos los campos de la app aprovechen el ancho que
+            ' les corresponde. Los que necesitan otra cosa (Dock=Top para no
+            ' estirarse de mas) lo pisan despues, como hace ConfiguracionNegocio.
+            t.Dock = DockStyle.Fill
             If esClave Then t.UseSystemPasswordChar = True
             Return t
         End Function
 
         Public Function CrearCombo() As ComboBox
-            Return New ComboBox With {
+            Dim c As New ComboBox With {
                 .Name = "th.campo",
                 .Font = Fuente(TamNormal),
                 .BackColor = Superficie2,
@@ -274,6 +281,9 @@ Namespace CafeteriaOS
                 .Height = 30,
                 .Margin = New Padding(0)
             }
+            ' Mismo motivo que en CrearInput.
+            c.Dock = DockStyle.Fill
+            Return c
         End Function
 
         Public Function CrearCheck(texto As String, Optional tono As Tono = Tono.Secundario) As CheckBox

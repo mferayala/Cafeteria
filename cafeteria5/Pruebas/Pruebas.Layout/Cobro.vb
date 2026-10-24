@@ -73,6 +73,21 @@ Namespace Prueba
                     Revisar("Deja a cuenta se lee completo",
                             caja.Text = "Dejar a cuenta (paga despues)")
 
+                    ' El pedido fue explicitamente: debajo de la fila "Cambio", no
+                    ' al lado. Con AutoSize apagado el ancho del checkbox lo decide
+                    ' la celda, asi que la posicion hay que comprobarla.
+                    Dim padre = TryCast(caja.Parent, TableLayoutPanel)
+                    If padre Is Nothing Then
+                        Revisar("La opcion de dejar a cuenta esta en una tabla", False)
+                    Else
+                        Dim filaCambio = FilaDe(padre, BuscarTexto(padre, "Cambio"))
+                        Revisar("La opcion de dejar a cuenta esta debajo de Cambio",
+                                padre.GetPositionFromControl(caja).Row = filaCambio + 1)
+                        Revisar("La opcion de dejar a cuenta arranca en la primera columna",
+                                padre.GetPositionFromControl(caja).Column = 0)
+                        Revisar("La opcion de dejar a cuenta toma las dos columnas",
+                                padre.GetColumnSpan(caja) = 2)
+                    End If
                 End If
             End Using
 
@@ -90,6 +105,25 @@ Namespace Prueba
         Private Function PrimerInput(contenedor As Control) As TextBox
             For Each c As Control In Arbol.Todos(contenedor)
                 If TypeOf c Is TextBox Then Return DirectCast(c, TextBox)
+            Next
+            Return Nothing
+        End Function
+
+        ''' <summary>
+        ''' Numero de fila de un control dentro de su tabla. Si el control no esta
+        ''' en la tabla devuelve -1, para que la comparacion falle sola en vez de
+        ''' comparar contra un valor que no significa nada.
+        ''' </summary>
+        Private Function FilaDe(tabla As TableLayoutPanel, ctrl As Control) As Integer
+            If ctrl Is Nothing Then Return -1
+            Return tabla.GetPositionFromControl(ctrl).Row
+        End Function
+
+        Private Function BuscarTexto(tabla As TableLayoutPanel, texto As String) As Control
+            For Each c As Control In Arbol.Todos(tabla)
+                If TypeOf c Is Label AndAlso DirectCast(c, Label).Text = texto Then
+                    Return c
+                End If
             Next
             Return Nothing
         End Function
