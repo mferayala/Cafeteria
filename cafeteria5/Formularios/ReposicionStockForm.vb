@@ -45,6 +45,7 @@ Namespace CafeteriaOS
             StartPosition = FormStartPosition.CenterParent
             FormBorderStyle = FormBorderStyle.FixedDialog
             MinimizeBox = False
+            MaximizeBox = False
             ' Sin esto WinForms calcula el escalado con los valores por defecto y no
             ' con los que el Designer escribe: a 125% o 150% la fuente crece pero el
             ' ancho de las columnas no, y "Código de barras" queda en "Código de".
