@@ -69,6 +69,7 @@ Namespace CafeteriaOS
             StartPosition = FormStartPosition.CenterParent
             FormBorderStyle = FormBorderStyle.FixedDialog
             MinimizeBox = False
+            MaximizeBox = False
             ' Sin esto WinForms escala con los valores por defecto y no con los que
             ' escribe el Designer: a 125% o 150% la fuente crece y las columnas no,
             ' y los labels quedan cortados.
@@ -248,7 +249,7 @@ Namespace CafeteriaOS
             If cargandoSugerencias Then Return
             cargandoSugerencias = True
             Try
-                ' Las subcategorias si dependen de la categoria elegida, asi que
+                ' Las subcategorias si dependen de la categoria elegida, asi quedotnet --list-sdks
                 ' esta parte va cada vez que el usuario elige otra.
                 Dim subActual = Si(TextoDe(txtSubcategoria), "")
                 txtSubcategoria.Items.Clear()
