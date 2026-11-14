@@ -5,6 +5,8 @@ Imports System.Linq
 Namespace CafeteriaOS
 
     Public Class ClienteRegistrado
+        ''' <summary>Id en la tabla clientes. Cero mientras no se guardo.</summary>
+        Public Property ID As Integer
         Public Property Nombre As String
         Public Property Telefono As String
         Public Property CantidadPedidos As Integer
@@ -30,4 +32,4 @@ Namespace CafeteriaOS
         Public Const SinTelefono As String = "--"
     End Class
 
-End Namespace
+End Namespace

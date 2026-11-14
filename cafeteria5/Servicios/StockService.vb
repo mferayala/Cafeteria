@@ -148,7 +148,8 @@ Namespace CafeteriaOS
                            tipo As TipoMovimientoStock,
                            Optional usuario As String = Nothing,
                            Optional observacion As String = Nothing,
-                           Optional referenciaID As Integer = 0)
+                           Optional referenciaID As Integer = 0,
+                           Optional persistir As Boolean = True)
 
             If producto Is Nothing OrElse delta = 0 Then Return
 
@@ -161,15 +162,20 @@ Namespace CafeteriaOS
             Dim aplicado = producto.Stock - antes
             If aplicado = 0 Then Return
 
+            ' persistir en False lo usa IngresoService, que guarda el ingreso entero
+            ' (cabecera, lineas y movimientos) en una sola transaccion.
+            Dim movimiento As MovimientoStock = Nothing
             Try
-                MovimientoStockService.Registrar(producto, aplicado, tipo,
-                                                 OrigenDe(tipo), referenciaID,
-                                                 usuario, observacion)
+                movimiento = MovimientoStockService.Registrar(producto, aplicado, tipo,
+                                                              OrigenDe(tipo), referenciaID,
+                                                              usuario, observacion)
+                If persistir AndAlso movimiento IsNot Nothing Then StockRepo.GuardarAjuste(movimiento)
             Catch
                 ' El ajuste manual tiene que quedar asentado o no vale: si no se
                 ' puede guardar el movimiento se vuelve el deposito a como estaba y
                 ' el error sube, en vez de perder el cambio sin que nadie lo sepa.
                 producto.Stock = antes
+                If movimiento IsNot Nothing Then Datos.ListaMovimientos.Remove(movimiento)
                 Throw
             End Try
         End Sub
@@ -215,4 +221,4 @@ Namespace CafeteriaOS
 
     End Module
 
-End Namespace
+End Namespace

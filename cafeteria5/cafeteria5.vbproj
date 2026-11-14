@@ -19,6 +19,11 @@
     Pruebas/ son tres proyectos aparte, cada uno con su propio punto de entrada. Si el
     proyecto principal los compilara, tendria cuatro Mains y no arrancaria.
   -->
+  <!-- Conector de MySQL (lo baja NuGet solo al compilar). Ver BaseDatos\Db.vb. -->
+  <ItemGroup>
+    <PackageReference Include="MySql.Data" Version="9.1.0" />
+  </ItemGroup>
+
   <ItemGroup>
     <Compile Remove="Pruebas\**" />
     <None Include="Pruebas\**" />

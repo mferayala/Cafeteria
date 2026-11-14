@@ -34,6 +34,8 @@ Namespace CafeteriaOS
     ''' descartan los de la sesion anterior para que el saldo refleje solo la caja abierta.
     ''' </summary>
     Public Class SesionCaja
+        ''' <summary>Id en la tabla sesiones_caja. Cero si nunca se abrio.</summary>
+        Public Property ID As Integer
         Public Property Abierta As Boolean
         Public Property MontoInicial As Decimal
         Public Property FechaApertura As DateTime
@@ -85,4 +87,4 @@ Namespace CafeteriaOS
         End Property
     End Class
 
-End Namespace
+End Namespace

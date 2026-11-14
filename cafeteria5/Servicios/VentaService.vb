@@ -1,4 +1,4 @@
-Imports System.Collections.Generic
+﻿Imports System.Collections.Generic
 Imports System.Linq
 
 Namespace CafeteriaOS
@@ -142,6 +142,11 @@ Namespace CafeteriaOS
                 ' A cuenta NO toca caja: la mercaderia sale del deposito pero la plata
                 ' todavia no entro. El movimiento aparece recien cuando se cobre.
                 If venta.EstaPagada Then CajaService.RegistrarVenta(venta)
+
+                ' Con todo aplicado en memoria se guarda en MySQL en una sola
+                ' transaccion. Si la base rechaza algo, se cae al Catch de abajo y la
+                ' venta se deshace tambien en memoria.
+                VentaRepo.GuardarConfirmacion(venta)
             Catch
                 Try
                     CajaService.RevertirVenta(venta)
@@ -155,6 +160,13 @@ Namespace CafeteriaOS
                 ' La venta no llega a estar registrada: se saca del historial para no
                 ' dejarla a medio confirmar.
                 If Datos.ListaVentas.Contains(venta) Then Datos.ListaVentas.Remove(venta)
+
+                ' Los movimientos de stock de una venta que no llego a guardarse no
+                ' tienen que quedar en el historial.
+                Datos.ListaMovimientos.RemoveAll(
+                    Function(m) m.ReferenciaID = venta.ID AndAlso
+                                (m.Tipo = TipoMovimientoStock.Venta OrElse
+                                 m.Tipo = TipoMovimientoStock.Cancelacion))
                 Throw
             End Try
         End Sub
@@ -184,6 +196,16 @@ Namespace CafeteriaOS
                     "Anularla exige devolver esa plata al cliente.")
             End If
 
+            ' Foto de como estaba todo, para poder volver atras si MySQL rechaza la
+            ' anulacion: en ese caso la venta tiene que seguir confirmada tambien en
+            ' memoria, con su stock, su cobro en caja y su pedido.
+            Dim estabaDescontado = venta.StockDescontado
+            Dim cajaAntes = If(Datos.Caja Is Nothing, Nothing, Datos.Caja.Movimientos.ToList())
+            Dim pedido = Datos.ListaPedidos.FirstOrDefault(
+                Function(p) p.VentaID = venta.ID AndAlso p.Estado <> EstadoPedido.Cancelado)
+            Dim pedidoEstado = If(pedido Is Nothing, EstadoPedido.Cancelado, pedido.Estado)
+            Dim pedidoMotivo = If(pedido Is Nothing, Nothing, pedido.MotivoCancelacion)
+
             Try
                 StockService.Restaurar(venta)
                 CajaService.RevertirVenta(venta)
@@ -202,6 +224,32 @@ Namespace CafeteriaOS
             ' seguia mostrando un pedido cuya venta ya no existe, y alguien iba a
             ' preparar mercaderia que ya se devolvio.
             PedidoService.DarDeBajaPorVenta(venta.ID, venta.AnuladaMotivo)
+
+            Try
+                VentaRepo.GuardarAnulacion(venta)
+            Catch
+                If estabaDescontado Then
+                    For Each item In venta.Items
+                        If item.Producto IsNot Nothing Then item.Producto.Stock -= item.Cantidad
+                    Next
+                    venta.StockDescontado = True
+                End If
+                Datos.ListaMovimientos.RemoveAll(
+                    Function(m) m.Tipo = TipoMovimientoStock.Cancelacion AndAlso m.ReferenciaID = venta.ID)
+                If cajaAntes IsNot Nothing Then
+                    Datos.Caja.Movimientos.Clear()
+                    Datos.Caja.Movimientos.AddRange(cajaAntes)
+                End If
+                If pedido IsNot Nothing Then
+                    pedido.Estado = pedidoEstado
+                    pedido.MotivoCancelacion = pedidoMotivo
+                End If
+                venta.Estado = EstadoVenta.Confirmada
+                venta.AnuladaFecha = Nothing
+                venta.AnuladaMotivo = Nothing
+                venta.AnuladaUsuario = Nothing
+                Throw
+            End Try
         End Sub
 
         ''' <summary>
@@ -237,6 +285,11 @@ Namespace CafeteriaOS
                     "El importe supera el saldo pendiente de " & venta.Saldo.ToString("C2") & ".")
             End If
 
+            Dim pagadoAntes = venta.MontoPagado
+            Dim pagoAntes = venta.Pago
+            Dim metodoAntes = venta.MetodoPago
+            Dim movimientosCajaAntes = If(Datos.Caja Is Nothing, 0, Datos.Caja.Movimientos.Count)
+
             venta.MontoPagado += monto
             venta.Pago = If(venta.Saldo <= 0D, EstadoPago.Pagada, EstadoPago.Pendiente)
             venta.MetodoPago = metodoPago
@@ -244,6 +297,23 @@ Namespace CafeteriaOS
             ' El movimiento va por el importe cobrado, no por el total: una deuda
             ' saldada en dos pagos suma en caja lo que realmente entro.
             CajaService.RegistrarCobroDeuda(venta, monto, usuario)
+
+            ' Si la caja estaba abierta, RegistrarCobroDeuda acaba de agregar un
+            ' movimiento: es el ultimo de la lista.
+            Dim movCaja As MovimientoCaja = Nothing
+            If Datos.Caja IsNot Nothing AndAlso Datos.Caja.Movimientos.Count > movimientosCajaAntes Then
+                movCaja = Datos.Caja.Movimientos.Last()
+            End If
+
+            Try
+                VentaRepo.GuardarPago(venta, monto, metodoPago, movCaja)
+            Catch
+                venta.MontoPagado = pagadoAntes
+                venta.Pago = pagoAntes
+                venta.MetodoPago = metodoAntes
+                If movCaja IsNot Nothing Then Datos.Caja.Movimientos.Remove(movCaja)
+                Throw
+            End Try
         End Sub
 
         ''' <summary>

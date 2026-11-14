@@ -1,4 +1,4 @@
-Imports System.Drawing
+﻿Imports System.Drawing
 Imports System.Globalization
 Imports System.Linq
 Imports System.Windows.Forms
@@ -283,6 +283,14 @@ Namespace CafeteriaOS
             config.IVAGeneral = numIva.Value
             config.AplicarGastosFijos = chkGastos.Checked
             config.AplicarIVA = chkIva.Checked
+
+            Try
+                ConfigRepo.Guardar(config)
+            Catch ex As Exception
+                MessageBox.Show("No se pudo guardar la configuracion en la base de datos:" & vbCrLf &
+                                ex.Message, "Configuracion", MessageBoxButtons.OK, MessageBoxIcon.Error)
+                Return
+            End Try
 
             Datos.ConfigNegocio = config
 

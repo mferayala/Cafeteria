@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <!--
     Suite de pruebas. Compila el codigo real con Compile Include en vez de usar un
@@ -35,6 +35,7 @@
     <Compile Include="$(Raiz)Tema.vb" Link="Tema.vb" />
     <Compile Include="$(Raiz)Modelos\*.vb" LinkBase="Modelos" />
     <Compile Include="$(Raiz)Servicios\*.vb" LinkBase="Servicios" />
+    <Compile Include="$(Raiz)BaseDatos\*.vb" LinkBase="BaseDatos" />
     <Compile Include="$(Raiz)Utilidades\*.vb" LinkBase="Utilidades" />
     <Compile Include="$(Raiz)Formularios\*.vb" LinkBase="Formularios" />
     <Compile Include="$(Raiz)Paneles\*.vb" LinkBase="Paneles" />
@@ -43,6 +44,12 @@
     <Compile Include="ProductoEditor.vb" />
     <Compile Include="ProductoEditorCampos.vb" />
     <Compile Include="PosVenta.vb" />
+  </ItemGroup>
+
+  <!-- Los servicios llaman a BaseDatos; en las pruebas Db.Habilitada queda en False
+       y todo sigue en memoria, sin necesitar XAMPP. -->
+  <ItemGroup>
+    <PackageReference Include="MySql.Data" Version="9.1.0" />
   </ItemGroup>
 
 </Project>

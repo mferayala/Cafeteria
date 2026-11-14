@@ -175,6 +175,21 @@ Namespace CafeteriaOS
             ListaIngresos.Add(i)
         End Sub
 
+        ''' <summary>
+        ''' Retoma la numeracion despues de cargar la base de datos. Cada contador
+        ''' sigue desde el mayor id guardado, asi un registro nuevo nunca choca con
+        ''' uno que ya existe en MySQL.
+        ''' </summary>
+        Public Sub AjustarContadores(maxVenta As Integer,
+                                     maxPedido As Integer,
+                                     maxMovimiento As Integer,
+                                     maxIngreso As Integer)
+            contadorVentas = maxVenta + 1
+            contadorPedidos = maxPedido + 1
+            contadorMovimientos = maxMovimiento + 1
+            contadorIngresos = maxIngreso + 1
+        End Sub
+
         Public Function UsuarioActualNombre() As String
             If UsuarioActual Is Nothing Then Return "Sistema"
             Return UsuarioActual.Nombre
@@ -182,4 +197,4 @@ Namespace CafeteriaOS
 
     End Module
 
-End Namespace
+End Namespace

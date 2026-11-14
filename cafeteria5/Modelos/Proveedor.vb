@@ -32,6 +32,8 @@ Namespace CafeteriaOS
     End Class
 
     Public Class Proveedor
+        ''' <summary>Id en la tabla proveedores. Cero mientras no se guardo.</summary>
+        Public Property ID As Integer
         Public Property Codigo As String
         Public Property Nombre As String
         Public Property Domicilio As String
@@ -90,4 +92,4 @@ Namespace CafeteriaOS
         End Property
     End Class
 
-End Namespace
+End Namespace

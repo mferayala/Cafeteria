@@ -157,6 +157,13 @@ Namespace CafeteriaOS
                                MessageBoxIcon.Warning) <> DialogResult.OK Then
                 Return
             End If
+            Try
+                ProveedorRepo.Eliminar(p)
+            Catch ex As Exception
+                MessageBox.Show("No se pudo eliminar el proveedor de la base de datos:" & vbCrLf &
+                                ex.Message, "Eliminar proveedor", MessageBoxButtons.OK, MessageBoxIcon.Error)
+                Return
+            End Try
             Datos.ListaProveedores.Remove(p)
             Refrescar()
         End Sub
@@ -210,4 +217,4 @@ Namespace CafeteriaOS
         End Sub
     End Class
 
-End Namespace
+End Namespace

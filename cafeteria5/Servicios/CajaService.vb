@@ -16,23 +16,29 @@ Namespace CafeteriaOS
         End Function
 
         Public Sub Abrir(montoInicial As Decimal)
-            Datos.Caja = New SesionCaja With {
+            Dim sesion As New SesionCaja With {
                 .Abierta = True,
                 .MontoInicial = montoInicial,
                 .FechaApertura = DateTime.Now,
                 .UsuarioApertura = Datos.UsuarioActualNombre()
             }
+            ' Primero se crea el turno en MySQL (le da el ID) y recien despues pasa a
+            ' ser la caja actual: si la base falla, la caja sigue cerrada.
+            CajaRepo.AbrirSesion(sesion)
+            Datos.Caja = sesion
         End Sub
 
         ''' <summary>Cierra el turno: deja de aceptar ventas y registra el cierre.</summary>
         Public Sub Cerrar()
             If Not EstaAbierta() Then Return
-            Datos.Caja.Movimientos.Add(New MovimientoCaja With {
+            Dim cierre As New MovimientoCaja With {
                 .Tipo = MovimientoCaja.TipoCierre,
                 .Monto = Datos.Caja.SaldoActual,
                 .Descripcion = "Cierre de caja",
                 .Usuario = Datos.UsuarioActualNombre()
-            })
+            }
+            CajaRepo.CerrarSesion(Datos.Caja, cierre)
+            Datos.Caja.Movimientos.Add(cierre)
             Datos.Caja.Abierta = False
         End Sub
 
@@ -98,14 +104,16 @@ Namespace CafeteriaOS
 
         Public Sub RegistrarEgreso(monto As Decimal, descripcion As String)
             If Not EstaAbierta() Then Exit Sub
-            Datos.Caja.Movimientos.Add(New MovimientoCaja With {
+            Dim egreso As New MovimientoCaja With {
                 .Tipo = MovimientoCaja.TipoEgreso,
                 .Monto = monto,
                 .Descripcion = If(String.IsNullOrWhiteSpace(descripcion), "Egreso", descripcion),
                 .Usuario = Datos.UsuarioActualNombre()
-            })
+            }
+            CajaRepo.GuardarMovimiento(Datos.Caja.ID, egreso)
+            Datos.Caja.Movimientos.Add(egreso)
         End Sub
 
     End Module
 
-End Namespace
+End Namespace

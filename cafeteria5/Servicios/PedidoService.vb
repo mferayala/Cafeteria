@@ -1,4 +1,4 @@
-Imports System.Linq
+﻿Imports System.Linq
 
 Namespace CafeteriaOS
 
@@ -65,8 +65,42 @@ Namespace CafeteriaOS
             Next
 
             Datos.RegistrarPedido(pedido)
+            Try
+                PedidoRepo.Insertar(pedido)
+            Catch
+                Datos.ListaPedidos.Remove(pedido)
+                Throw
+            End Try
             Return pedido
         End Function
+
+        ''' <summary>
+        ''' Mueve un pedido en el tablero (Listo, Entregado, Cancelado) y lo guarda.
+        ''' Si la base de datos falla, el pedido vuelve al estado que tenia.
+        ''' </summary>
+        Public Sub CambiarEstado(pedido As Pedido,
+                                 nuevo As EstadoPedido,
+                                 Optional motivo As String = Nothing)
+            If pedido Is Nothing Then Return
+
+            Dim estadoAntes = pedido.Estado
+            Dim motivoAntes = pedido.MotivoCancelacion
+
+            pedido.Estado = nuevo
+            If nuevo = EstadoPedido.Cancelado Then
+                pedido.MotivoCancelacion = motivo
+            ElseIf nuevo = EstadoPedido.Entregado Then
+                pedido.MotivoCancelacion = String.Empty
+            End If
+
+            Try
+                PedidoRepo.CambiarEstado(pedido)
+            Catch
+                pedido.Estado = estadoAntes
+                pedido.MotivoCancelacion = motivoAntes
+                Throw
+            End Try
+        End Sub
 
         ''' <summary>Pedidos que estan en el tablero, en el orden en que se tomaron.</summary>
         Public Function Activos() As List(Of Pedido)

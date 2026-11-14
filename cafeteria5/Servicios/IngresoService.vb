@@ -67,10 +67,37 @@ Namespace CafeteriaOS
             }
             Datos.RegistrarIngreso(ingreso)
 
+            ' Stock de cada producto antes del ingreso, por si hay que volver atras.
+            Dim stockAntes As New Dictionary(Of Producto, Integer)()
+            For Each d In lineas
+                stockAntes(d.Producto) = d.Producto.Stock
+            Next
+
+            ' persistir:=False porque el ingreso entero se guarda abajo, en una sola
+            ' transaccion, en lugar de un movimiento por vez.
             For Each d In lineas
                 StockService.Ajustar(d.Producto, d.Cantidad, TipoMovimientoStock.Ingreso,
-                                     Datos.UsuarioActualNombre(), d.Observacion, ingreso.ID)
+                                     Datos.UsuarioActualNombre(), d.Observacion, ingreso.ID,
+                                     persistir:=False)
             Next
+
+            Try
+                Dim movimientos = Datos.ListaMovimientos.
+                    Where(Function(m) m.Tipo = TipoMovimientoStock.Ingreso AndAlso m.ReferenciaID = ingreso.ID).
+                    ToList()
+                StockRepo.GuardarIngreso(ingreso, movimientos)
+            Catch ex As Exception
+                ' MySQL no lo acepto: se deshace en memoria para que la pantalla no
+                ' muestre un stock que la base no tiene.
+                For Each par In stockAntes
+                    par.Key.Stock = par.Value
+                Next
+                Datos.ListaMovimientos.RemoveAll(
+                    Function(m) m.Tipo = TipoMovimientoStock.Ingreso AndAlso m.ReferenciaID = ingreso.ID)
+                Datos.ListaIngresos.Remove(ingreso)
+                resultado.Mensaje = "No se pudo guardar el ingreso en la base de datos: " & ex.Message
+                Return resultado
+            End Try
 
             ' El proveedor es opcional, asi que sus datos de ultima compra solo se
             ' tocan cuando hay alguien a quien pertainecen.
@@ -79,7 +106,9 @@ Namespace CafeteriaOS
                 proveedor.FechaUltimaOperacion = ingreso.Fecha
             End If
 
-            If Not IngresoAlmacen.Guardar() Then
+            ' Con base de datos el historial ya quedo en MySQL. El archivo JSON solo se
+            ' sigue usando en el modo sin base (los proyectos de Pruebas).
+            If Not Db.Habilitada AndAlso Not IngresoAlmacen.Guardar() Then
                 ' El ingreso quedo aplicado igual, pero el historico no se pudo
                 ' escribir. Se avisa para que no se pierda en silencio.
                 resultado.Advertencia =
@@ -179,4 +208,4 @@ Namespace CafeteriaOS
         Public Property Ingreso As IngresoStock
     End Class
 
-End Namespace
+End Namespace

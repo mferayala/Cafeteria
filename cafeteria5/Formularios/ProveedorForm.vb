@@ -226,13 +226,24 @@ Namespace CafeteriaOS
             If esNuevo Then
                 proveedor.CreadoPor = Datos.UsuarioActualNombre()
                 proveedor.FechaCreacion = DateTime.Now
-                Datos.ListaProveedores.Add(proveedor)
-                esNuevo = False
             End If
 
             proveedor.HistorialCambios.Add(
                 DateTime.Now.ToString("dd/MM/yyyy HH:mm") & " - " &
                 Datos.UsuarioActualNombre() & " actualizo los datos del proveedor")
+
+            Try
+                ProveedorRepo.Guardar(proveedor)
+            Catch ex As Exception
+                MessageBox.Show("No se pudo guardar el proveedor en la base de datos:" & vbCrLf &
+                                ex.Message, "Proveedor", MessageBoxButtons.OK, MessageBoxIcon.Error)
+                Return
+            End Try
+
+            If esNuevo Then
+                Datos.ListaProveedores.Add(proveedor)
+                esNuevo = False
+            End If
             PintarHistorial()
 
             DialogResult = DialogResult.OK
@@ -299,4 +310,4 @@ Namespace CafeteriaOS
         #End Region
     End Class
 
-End Namespace
+End Namespace

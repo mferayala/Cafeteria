@@ -1,4 +1,4 @@
-Imports System.Collections.Generic
+﻿Imports System.Collections.Generic
 Imports System.Linq
 
 Namespace CafeteriaOS
@@ -93,6 +93,13 @@ Namespace CafeteriaOS
 
             If p.ID = 0 Then
                 p.ID = Datos.SiguienteIdProducto()
+                Try
+                    CatalogoRepo.InsertarProducto(p)
+                Catch ex As Exception
+                    p.ID = 0
+                    resultado.Mensaje = "No se pudo guardar el producto en la base de datos: " & ex.Message
+                    Return resultado
+                End Try
                 Datos.ListaProductos.Add(p)
             Else
                 Dim existente = PorId(p.ID)
@@ -100,6 +107,12 @@ Namespace CafeteriaOS
                     resultado.Mensaje = "El producto que queres editar ya no existe en el catalogo."
                     Return resultado
                 End If
+                Try
+                    CatalogoRepo.ActualizarProducto(p)
+                Catch ex As Exception
+                    resultado.Mensaje = "No se pudo guardar el producto en la base de datos: " & ex.Message
+                    Return resultado
+                End Try
                 If Not ReferenceEquals(existente, p) Then
                     CopiarSobre(existente, p)
                     p = existente

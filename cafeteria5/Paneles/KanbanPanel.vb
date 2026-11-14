@@ -196,10 +196,12 @@ Namespace CafeteriaOS
                 Return
             End If
 
-            actual.Estado = nuevo
-            If nuevo = EstadoPedido.Entregado Then
-                actual.MotivoCancelacion = String.Empty
-            End If
+            Try
+                PedidoService.CambiarEstado(actual, nuevo)
+            Catch ex As Exception
+                MessageBox.Show("No se pudo guardar el cambio del pedido:" & vbCrLf & ex.Message,
+                                "Pedidos", MessageBoxButtons.OK, MessageBoxIcon.Error)
+            End Try
             Refrescar()
         End Sub
 
@@ -221,13 +223,16 @@ Namespace CafeteriaOS
             ' que descontó el stock y la que tiene el movimiento en caja, y anularla deja
             ' las dos cosas asentadas. Si el pedido nunca se cobro, no hay venta que
             ' anular y solo queda la baja en el tablero.
-            Dim venta = VentaService.Buscar(actual.VentaID)
-            If venta IsNot Nothing Then
-                VentaService.Anular(venta, motivo)
-            End If
-
-            actual.Estado = EstadoPedido.Cancelado
-            actual.MotivoCancelacion = motivo
+            Try
+                Dim venta = VentaService.Buscar(actual.VentaID)
+                If venta IsNot Nothing Then
+                    VentaService.Anular(venta, motivo)
+                End If
+                PedidoService.CambiarEstado(actual, EstadoPedido.Cancelado, motivo)
+            Catch ex As Exception
+                MessageBox.Show("No se pudo cancelar el pedido:" & vbCrLf & ex.Message,
+                                "Pedidos", MessageBoxButtons.OK, MessageBoxIcon.Error)
+            End Try
             Refrescar()
         End Sub
 
@@ -249,4 +254,4 @@ Namespace CafeteriaOS
         #End Region
     End Class
 
-End Namespace
+End Namespace

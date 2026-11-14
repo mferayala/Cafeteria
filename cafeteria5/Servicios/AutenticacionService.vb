@@ -11,8 +11,14 @@ Namespace CafeteriaOS
 
         Private ReadOnly usuarios As List(Of Usuario) = DatosIniciales.Usuarios()
 
-        ''' <summary>Busca por correo o telefono. Devuelve Nothing si la contrasena no coincide.</summary>
+        ''' <summary>
+        ''' Busca por correo, telefono o nombre de usuario. Devuelve Nothing si la
+        ''' contrasena no coincide. Con base de datos la consulta va a la tabla usuarios;
+        ''' sin base (pruebas) usa la lista de DatosIniciales como antes.
+        ''' </summary>
         Public Function Buscar(identificador As String, contrasena As String) As Usuario
+            If Db.Habilitada Then Return UsuarioRepo.Autenticar(identificador, contrasena)
+
             Dim clave = If(identificador, String.Empty).Trim()
             Return usuarios.FirstOrDefault(
                 Function(u) u.Identificador.Equals(clave, StringComparison.OrdinalIgnoreCase) AndAlso
@@ -52,4 +58,4 @@ Namespace CafeteriaOS
 
     End Module
 
-End Namespace
+End Namespace

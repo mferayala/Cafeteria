@@ -1,4 +1,4 @@
-Imports System
+﻿Imports System
 
 Namespace CafeteriaOS
 
@@ -14,18 +14,21 @@ Namespace CafeteriaOS
         ''' <summary>
         ''' Deja constancia de un cambio de stock. La cantidad va con signo: positiva si
         ''' sumo unidades, negativa si las resto.
+        '''
+        ''' Devuelve el movimiento creado para que StockService pueda guardarlo en la
+        ''' base de datos (o sacarlo de la lista si la base falla).
         ''' </summary>
-        Public Sub Registrar(producto As Producto,
+        Public Function Registrar(producto As Producto,
                              cantidad As Integer,
                              tipo As TipoMovimientoStock,
                              origen As String,
                              referenciaID As Integer,
                              usuario As String,
-                             observacion As String)
+                             observacion As String) As MovimientoStock
 
-            If producto Is Nothing OrElse cantidad = 0 Then Return
+            If producto Is Nothing OrElse cantidad = 0 Then Return Nothing
 
-            Datos.RegistrarMovimiento(New MovimientoStock With {
+            Dim movimiento As New MovimientoStock With {
                 .Producto = producto,
                 .Cantidad = cantidad,
                 .Tipo = tipo,
@@ -35,8 +38,10 @@ Namespace CafeteriaOS
                               Datos.UsuarioActualNombre(), usuario),
                 .Observacion = If(String.IsNullOrWhiteSpace(observacion),
                                   DescripcionPorDefecto(tipo), observacion)
-            })
-        End Sub
+            }
+            Datos.RegistrarMovimiento(movimiento)
+            Return movimiento
+        End Function
 
         ''' <summary>Texto de respaldo para cuando quien opera no escribe nada.</summary>
         Public Function DescripcionPorDefecto(tipo As TipoMovimientoStock) As String

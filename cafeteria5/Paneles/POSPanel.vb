@@ -600,13 +600,19 @@ Namespace CafeteriaOS
                 ' movimiento de caja y saca la venta del historial, para que no
                 ' exista una venta cobrada sin los productos que la justifican.
                 VentaService.Confirmar(venta)
-
-                ClienteService.RegistrarOActualizar(venta.ClienteNombre,
-                                                    venta.ClienteTelefono, venta)
             Catch ex As Exception
                 MessageBox.Show("No se pudo registrar la venta:" & vbCrLf & ex.Message,
                                 "Venta", MessageBoxButtons.OK, MessageBoxIcon.Error)
                 Return
+            End Try
+
+            ' La venta ya esta guardada. Si falla el registro del cliente se avisa,
+            ' pero se sigue con el ticket y el pedido: la venta es real.
+            Try
+                ClienteService.RegistrarOActualizar(venta.ClienteNombre,
+                                                    venta.ClienteTelefono, venta)
+            Catch ex As Exception
+                MessageBox.Show(ex.Message, "Cliente", MessageBoxButtons.OK, MessageBoxIcon.Warning)
             End Try
 
             If quierePreparacion Then RegistrarPreparacion(venta)
@@ -671,7 +677,13 @@ Namespace CafeteriaOS
                 Return False
             End If
 
-            CajaService.Abrir(monto)
+            Try
+                CajaService.Abrir(monto)
+            Catch ex As Exception
+                MessageBox.Show("No se pudo abrir la caja:" & vbCrLf & ex.Message, "Caja",
+                                MessageBoxButtons.OK, MessageBoxIcon.Error)
+                Return False
+            End Try
             Return True
         End Function
 
@@ -705,4 +717,4 @@ Namespace CafeteriaOS
         #End Region
     End Class
 
-End Namespace
+End Namespace

@@ -31,8 +31,22 @@ Namespace CafeteriaOS
         Public Function RegistrarOActualizar(nombre As String,
                                              telefono As String,
                                              venta As Venta) As ClienteRegistrado
-            Return RegistrarOActualizar(nombre, telefono, venta.Total,
-                                        venta.MetodoPago, venta.FechaHora, venta.ID)
+            Dim cliente = RegistrarOActualizar(nombre, telefono, venta.Total,
+                                               venta.MetodoPago, venta.FechaHora, venta.ID)
+
+            ' Se guarda el cliente (o se actualiza su nombre) y queda vinculado a la
+            ' venta en MySQL. La venta ya esta guardada: si esto falla se avisa aparte
+            ' para no hacer creer que la venta se perdio.
+            If cliente IsNot Nothing Then
+                Try
+                    ClienteRepo.GuardarConVenta(cliente, venta.ID)
+                Catch ex As Exception
+                    Throw New InvalidOperationException(
+                        "La venta " & venta.Numero & " quedo guardada, pero no se pudo guardar " &
+                        "el cliente: " & ex.Message, ex)
+                End Try
+            End If
+            Return cliente
         End Function
 
         ''' <summary>
@@ -116,4 +130,4 @@ Namespace CafeteriaOS
 
     End Module
 
-End Namespace
+End Namespace

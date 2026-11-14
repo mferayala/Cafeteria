@@ -1,4 +1,4 @@
-Imports System.Collections.Generic
+﻿Imports System.Collections.Generic
 Imports System.Linq
 Imports System.Globalization
 
@@ -69,6 +69,9 @@ Namespace CafeteriaOS
                 .ID = Datos.SiguienteIdCategoria(),
                 .Nombre = texto
             }
+            Dim falla = GuardarEnBase(Sub() CatalogoRepo.InsertarCategoria(nueva))
+            If falla IsNot Nothing Then Return falla
+
             Datos.ListaCategorias.Add(nueva)
             Return ResultadoCategoria.Exito()
         End Function
@@ -94,6 +97,9 @@ Namespace CafeteriaOS
                 Return ResultadoCategoria.Falla(
                     "Ya existe la categoria """ & texto & """. Renombrarla fusionaria las dos.")
             End If
+
+            Dim falla = GuardarEnBase(Sub() CatalogoRepo.RenombrarCategoria(categoria.ID, texto))
+            If falla IsNot Nothing Then Return falla
 
             Dim viejo = categoria.Nombre
             categoria.Nombre = texto
@@ -128,6 +134,10 @@ Namespace CafeteriaOS
                 End If
             End If
 
+            Dim falla = GuardarEnBase(
+                Sub() CatalogoRepo.EliminarCategoria(categoria.ID, If(destino Is Nothing, 0, destino.ID)))
+            If falla IsNot Nothing Then Return falla
+
             Dim viejo = categoria.Nombre
             For Each p In Datos.ListaProductos
                 If Limpiar(p.Categoria).Equals(viejo, StringComparison.CurrentCultureIgnoreCase) Then
@@ -158,6 +168,9 @@ Namespace CafeteriaOS
                     "La categoria """ & categoria.Nombre & """ ya tiene la subcategoria """ & texto & """.")
             End If
 
+            Dim falla = GuardarEnBase(Sub() CatalogoRepo.InsertarSubcategoria(categoria.ID, texto))
+            If falla IsNot Nothing Then Return falla
+
             categoria.Subcategorias.Add(texto)
             Return ResultadoCategoria.Exito()
         End Function
@@ -180,6 +193,9 @@ Namespace CafeteriaOS
                 Return ResultadoCategoria.Falla(
                     "La categoria """ & categoria.Nombre & """ no tiene la subcategoria """ & texto & """.")
             End If
+
+            Dim falla = GuardarEnBase(Sub() CatalogoRepo.EliminarSubcategoria(categoria.ID, existente))
+            If falla IsNot Nothing Then Return falla
 
             categoria.Subcategorias.Remove(existente)
             For Each p In Datos.ListaProductos
@@ -269,6 +285,20 @@ Namespace CafeteriaOS
 
             Return Char.ToUpper(limpio(0), CultureInfo.CurrentCulture) &
                    limpio.Substring(1).ToLower(CultureInfo.CurrentCulture)
+        End Function
+
+        ''' <summary>
+        ''' Corre la escritura en MySQL ANTES de tocar la lista en memoria. Si la base
+        ''' la rechaza devuelve la falla para mostrarla, y la lista queda como estaba.
+        ''' Nothing significa que se guardo bien.
+        ''' </summary>
+        Private Function GuardarEnBase(accion As Action) As ResultadoCategoria
+            Try
+                accion()
+                Return Nothing
+            Catch ex As Exception
+                Return ResultadoCategoria.Falla("No se pudo guardar en la base de datos: " & ex.Message)
+            End Try
         End Function
 
         Private Function Limpiar(texto As String) As String
