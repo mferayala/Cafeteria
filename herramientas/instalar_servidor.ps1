@@ -181,11 +181,15 @@ try {
 
 # ---------------------------------------------------------------------
 Paso "4. Usuario de MySQL para las otras PCs"
+# Las tablas de permisos de MySQL (base "mysql") se danan cuando MySQL se cierra de
+# golpe (apagon, PC apagada con XAMPP abierto), y entonces no se puede crear el
+# usuario ("Index for table 'db' is corrupt"). --auto-repair repara solo las danadas.
+& (Join-Path $bin "mysqlcheck.exe") (ArgsRoot) --check --auto-repair --databases mysql 2>&1 | Out-Null
 try {
     $hay = [int](Sql "SELECT COUNT(*) FROM mysql.user WHERE user = 'cafeteria' AND host = '%'")
     if ($hay -gt 0 -and $ClaveRed -eq "") {
         $ClaveRed = $null
-        Bien "El usuario 'cafeteria' ya existia: no le cambio la contrasena (las otras PCs ya la tienen)."
+        Bien "El usuario 'cafeteria' ya existia: no le cambio la contrasena (esta en conexion_para_otras_pcs.txt)."
     } else {
         if ($ClaveRed -eq "") {
             # Letras y numeros, sin caracteres raros para que no haya problemas al escribirla.
@@ -198,7 +202,14 @@ try {
         } else {
             Sql "CREATE USER 'cafeteria'@'%' IDENTIFIED BY '$ClaveRed'" | Out-Null
         }
-        Sql "GRANT ALL PRIVILEGES ON cafeteria.* TO 'cafeteria'@'%'; FLUSH PRIVILEGES;" | Out-Null
+        try {
+            Sql "GRANT ALL PRIVILEGES ON cafeteria.* TO 'cafeteria'@'%'; FLUSH PRIVILEGES;" | Out-Null
+        } catch {
+            # Sin permisos el usuario no sirve, y su contrasena no llego a mostrarse:
+            # si quedara creado, la proxima vez se lo daria por bueno sin saber la clave.
+            if ($hay -eq 0) { try { Sql "DROP USER 'cafeteria'@'%'" | Out-Null } catch { } }
+            throw
+        }
         Bien "Usuario 'cafeteria' listo (solo tiene permiso sobre la base cafeteria)."
     }
 } catch {
@@ -260,7 +271,9 @@ if ($ClaveRed) {
     Write-Host ""
     Write-Host "   Tambien quedaron anotados en: $ini"
 } else {
-    Write-Host "      Contrasena:     (la misma que ya usaban)" -ForegroundColor Green
+    Write-Host "      Contrasena:     la que se genero la primera vez (no se cambio, para que" -ForegroundColor Green
+    Write-Host "                      las PCs que ya la tienen sigan andando). Esta anotada en:" -ForegroundColor Green
+    Write-Host "                      $(Join-Path $raiz 'conexion_para_otras_pcs.txt')" -ForegroundColor Green
 }
 Write-Host ""
 Write-Host "   En ESTA PC no hay que escribir nada: el programa usa localhost."
