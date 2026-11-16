@@ -5,6 +5,30 @@ fotos de productos, recuperación de contraseña por correo, productos unificado
 
 Seguí los pasos **en orden** y marcá cada casilla. Si algún resultado no coincide con lo que dice la guía, **pará ahí** y no sigas con el próximo paso.
 
+## Forma rápida (recomendada): `instalar_servidor.bat`
+
+En la **PC que tiene XAMPP**, con el proyecto bajado de GitHub:
+
+1. **Cerrá el programa en todas las PCs.**
+2. Hacé **doble clic** en **`instalar_servidor.bat`** (está en la carpeta principal del proyecto). Windows pide permiso de administrador: aceptá.
+3. Seguí lo que dice la ventana. Hace todo esto solo:
+   - Deja **MySQL como servicio de Windows**: arranca solo al prender la PC y **ya no hay que abrir XAMPP**.
+   - Si la base no existe, la crea. Si existe, **hace un backup** en la carpeta `backups` y la actualiza (son los pasos 1 a 4 de abajo), sin borrar datos.
+   - Carga las **fotos** de los productos (paso 10.1).
+   - Crea el **usuario de red** de MySQL y abre el **firewall** (paso 5.2).
+4. Al final muestra la **IP**, el **usuario** y la **contraseña** para las otras PCs, y los deja anotados en `conexion_para_otras_pcs.txt`. **Guardá ese archivo en un lugar seguro**: tiene la contraseña.
+5. En cada **otra PC**: bajá el proyecto, compilá, abrí el programa y escribí esos datos en la ventana **"Conexión con la base de datos"** (paso 5.3). Se escriben una sola vez.
+
+Después seguí con el **Paso 5.4** (prueba con dos PCs) y los pasos **6 a 9** (correo y contraseñas), que no se pueden automatizar.
+
+Se puede volver a ejecutar cuando quieras (por ejemplo, después de bajar una versión nueva): no repite nada ni le cambia la contraseña al usuario de red.
+
+> Si el instalador muestra un ERROR en rojo, no cambió nada más. Seguí la forma manual de abajo a partir del paso donde falló, o mandame el mensaje.
+
+---
+
+## Forma manual
+
 **¿Qué parte te toca?**
 - **Ya tenés la base `cafeteria` con datos** (ventas, stock, etc.) → seguí desde el **Paso 1**.
 - **Es una instalación nueva, sin datos** → andá directo a la **[Instalación desde cero](#instalación-desde-cero)** y después seguí desde el **Paso 6**.
@@ -152,16 +176,56 @@ SELECT table_name, column_name, data_type FROM information_schema.columns
 
 ## Paso 5 — Abrir el programa nuevo
 
+**5.1 — En la PC que tiene XAMPP**
+
 1. En Visual Studio, abrí `cafeteria5.sln` y compilá con **Compilar → Recompilar solución**.
-2. Si el programa corre en otras PCs, copiales **esta versión nueva**. Una versión vieja no conoce las columnas nuevas.
-3. Ejecutá con **F5**.
+   - La **Lista de errores** tiene que quedar en **0**. Si aparecen errores como *"No está definido el tipo 'MySqlConnection'"*, es que no se bajó la librería de MySQL: con internet, abrí una terminal en la carpeta `cafeteria5` y ejecutá `dotnet restore`, y volvé a compilar.
+   - Si Visual Studio pregunta si querés *"ejecutar la última compilación correcta"*, respondé **No**: hay errores, y estarías abriendo una versión vieja.
+2. Ejecutá con **F5**.
 
 - [ ] Se abre el login **sin** el aviso *"A la base de datos le faltan las tablas nuevas"*.
   Si aparece ese aviso, el Paso 3 no se ejecutó sobre la base `cafeteria`: repetilo.
 - [ ] En el login **no** aparecen las cuentas de prueba, y están "Mostrar contraseña" y "¿Olvidaste tu contraseña?".
 - [ ] En el **Punto de venta**, cada licuado y la limonada en vaso aparecen **una sola vez**. Las tarjetas sin foto muestran las iniciales del producto.
 
-**Si usan más de una PC** (por ejemplo, caja y cocina):
+**5.2 — Si usan más de una PC: preparar la PC de XAMPP para la red**
+
+> Si usaste `instalar_servidor.bat`, esto ya está hecho: salteá al 5.3.
+
+La base está **solo** en la PC de XAMPP. Las demás PCs se conectan a ella por la red. Por defecto, MySQL solo deja entrar desde la misma PC: hay que habilitarlo **una vez**, todo en la PC de XAMPP.
+
+1. **Anotar la IP de la PC de XAMPP.** Tecla Windows → escribí `cmd` → Enter → escribí `ipconfig` → Enter. Anotá la **"Dirección IPv4"** (por ejemplo `192.168.0.10`).
+   Si el router le cambia la IP cada tanto, las otras PCs dejan de encontrarla. Conviene fijarla en el router ("reserva DHCP") o pedírselo a quien maneje la red.
+2. **Crear un usuario de MySQL para la red.** En phpMyAdmin, pestaña **SQL** (sin elegir ninguna base), cambiá `UnaClaveSegura` por una contraseña inventada y ejecutá:
+   ```sql
+   CREATE USER IF NOT EXISTS 'cafeteria'@'%' IDENTIFIED BY 'UnaClaveSegura';
+   GRANT ALL PRIVILEGES ON cafeteria.* TO 'cafeteria'@'%';
+   FLUSH PRIVILEGES;
+   ```
+   Este usuario solo puede tocar la base `cafeteria`, no el resto de MySQL. Anotá la contraseña: la vas a escribir en cada PC.
+3. **Abrir el puerto 3306 en el firewall.** Tecla Windows → escribí `PowerShell` → clic derecho → **Ejecutar como administrador**, y pegá:
+   ```powershell
+   New-NetFirewallRule -DisplayName "MySQL Cafeteria" -Direction Inbound -Protocol TCP -LocalPort 3306 -Action Allow -Profile Private
+   ```
+   La red de Windows tiene que estar como **Privada**: Configuración → Red e Internet → la conexión activa → **Perfil de red: Privada**.
+
+- [ ] Tengo anotadas la IP de la PC de XAMPP y la contraseña del usuario `cafeteria`.
+
+**5.3 — En cada una de las otras PCs**
+
+1. Bajá el proyecto, compilá y ejecutá igual que en el 5.1, con la Lista de errores en **0**.
+2. Al arrancar aparece la ventana **"Conexión con la base de datos"**, porque esa PC no tiene la base. Completá:
+   - **Servidor (IP):** la IP del paso 5.2 (por ejemplo `192.168.0.10`). **No** `localhost`.
+   - **Puerto:** `3306`
+   - **Base de datos:** `cafeteria`
+   - **Usuario MySQL:** `cafeteria`
+   - **Contraseña:** la del paso 5.2.
+3. Tocá **Probar y guardar**. Queda guardado en el archivo `conexion.ini`, al lado del programa: no lo vuelve a pedir.
+   Si falla, la ventana explica qué revisar: IP equivocada, firewall, usuario sin permiso de red o contraseña.
+
+> Si esa PC **también** tiene XAMPP instalado, no lo uses para esto: la base que vale es la de la PC del paso 5.2.
+
+**5.4 — Prueba con dos PCs a la vez**
 - [ ] Hacé una venta con "Preparar" en la caja. En menos de 15 segundos tiene que aparecer en el tablero de **Pedidos** de la otra PC, sin reiniciar. Si estás apurado, tocá **F5**.
 - [ ] Si el título de la ventana dice **"SIN CONEXION CON LA BASE DE DATOS"**, esa PC perdió contacto con MySQL: revisá la red y que MySQL siga en verde. Se reconecta sola.
 
@@ -266,6 +330,8 @@ Las cuentas que crea el script tienen contraseñas conocidas (`123456`, `caja123
 ## Paso 10 — Cargar las fotos de los productos
 
 **10.1 — Fotos del menú (de una sola vez)**
+
+> Si usaste `instalar_servidor.bat`, esto ya está hecho.
 
 Las fotos del documento "Menú de imágenes Cafetería" ya están preparadas en el archivo **`imagenes_productos.sql`**, uno por producto.
 

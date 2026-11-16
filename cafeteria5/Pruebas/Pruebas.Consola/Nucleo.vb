@@ -1196,6 +1196,27 @@ Namespace Prueba
             Revisar("Quitar la foto de un producto la borra", Not original.TieneImagen())
 
             Console.WriteLine()
+            Console.WriteLine("== Conexion por PC (conexion.ini) ==")
+            If File.Exists(ConfiguracionConexion.Ruta) Then File.Delete(ConfiguracionConexion.Ruta)
+            Dim porDefecto = ConfiguracionConexion.Cargar()
+            Revisar("Sin conexion.ini se usa localhost", porDefecto.Servidor = "localhost" AndAlso porDefecto.Usuario = "root")
+            Dim otraPc As New ConfiguracionConexion With {
+                .Servidor = "192.168.0.10", .Puerto = 3307, .Usuario = "cafeteria", .Contrasena = "a;b=c"}
+            otraPc.Guardar()
+            Dim leida = ConfiguracionConexion.Cargar()
+            Revisar("conexion.ini se guarda y se vuelve a leer igual",
+                    leida.Servidor = "192.168.0.10" AndAlso leida.Puerto = 3307 AndAlso
+                    leida.Usuario = "cafeteria" AndAlso leida.Contrasena = "a;b=c")
+            Dim cadena = New MySql.Data.MySqlClient.MySqlConnectionStringBuilder(leida.CadenaConexion())
+            Revisar("Una contraseña con ; y = no rompe la cadena de conexion",
+                    cadena.Password = "a;b=c" AndAlso cadena.Server = "192.168.0.10" AndAlso cadena.Port = 3307UI)
+            File.Delete(ConfiguracionConexion.Ruta)
+            Revisar("Un usuario sin permiso de red se explica",
+                    ConfiguracionConexion.Explicar("Host '192.168.0.11' is not allowed to connect to this MariaDB server").Contains("usuario para la red"))
+            Revisar("Un servidor que no responde se explica",
+                    ConfiguracionConexion.Explicar("Unable to connect to any of the specified MySQL hosts.").Contains("firewall"))
+
+            Console.WriteLine()
             Console.WriteLine("== Productos dados de baja ==")
             Dim conAtajo = Datos.ListaProductos.First(Function(x) Not String.IsNullOrWhiteSpace(x.Atajo))
             Dim stockAntes = conAtajo.Stock

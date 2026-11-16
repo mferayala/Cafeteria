@@ -17,19 +17,10 @@ Namespace CafeteriaOS
         End Sub
 
         ''' <summary>
-        ''' Datos de conexion. XAMPP trae por defecto el usuario root sin contraseña en
-        ''' el puerto 3306. Si le pusiste contraseña a root, completala en Pwd.
-        '''
-        ''' SslMode=Disabled porque el MySQL de XAMPP no trae certificados: sin esto el
-        ''' conector puede intentar una conexion cifrada y fallar.
-        '''
-        ''' AllowUserVariables hace falta para poder usar @usuario_id (variable de
-        ''' MySQL que leen los triggers de auditoria) sin que el conector la confunda
-        ''' con un parametro.
+        ''' Datos de conexion. Program.Main la arma con ConfiguracionConexion (archivo
+        ''' conexion.ini de cada PC); el valor inicial es el de XAMPP en esta misma PC.
         ''' </summary>
-        Public Shared Property CadenaConexion As String =
-            "Server=localhost;Port=3306;Database=cafeteria;Uid=root;Pwd=;" &
-            "CharSet=utf8mb4;SslMode=Disabled;AllowUserVariables=True;"
+        Public Shared Property CadenaConexion As String = New ConfiguracionConexion().CadenaConexion()
 
         ''' <summary>
         ''' En False el programa trabaja solo en memoria, como antes de tener base de

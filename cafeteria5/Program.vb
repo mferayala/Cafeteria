@@ -21,16 +21,17 @@ Namespace CafeteriaOS
 
             ' Antes los datos se armaban en memoria con DatosIniciales.Cargar() y se
             ' perdian al cerrar. Ahora se leen de MySQL.
+            ' Donde esta la base lo dice conexion.ini de esta PC (en la PC de XAMPP es
+            ' localhost; en las demas, la IP de esa PC). Si no conecta, se pide ahi mismo
+            ' en una ventana, en vez de cerrar con un error.
             Db.Habilitada = True
+            Dim conexion = ConfiguracionConexion.Cargar()
+            Db.CadenaConexion = conexion.CadenaConexion()
             Dim mensaje As String = Nothing
             If Not Db.Probar(mensaje) Then
-                MessageBox.Show(
-                    "No se pudo conectar con la base de datos." & vbCrLf & vbCrLf &
-                    mensaje & vbCrLf & vbCrLf &
-                    "Revisa que en el panel de XAMPP este encendido MySQL y que hayas " &
-                    "importado el archivo cafeteria.sql en phpMyAdmin.",
-                    "Cafeteria", MessageBoxButtons.OK, MessageBoxIcon.Error)
-                Return
+                Using f As New ConexionForm(conexion, mensaje)
+                    If f.ShowDialog() <> DialogResult.OK Then Return
+                End Using
             End If
 
             Try

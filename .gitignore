@@ -3,3 +3,6 @@ obj/
 .vs/
 *.user
 login_recordado.txt
+conexion.ini
+backups/
+conexion_para_otras_pcs.txt
