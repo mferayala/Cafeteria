@@ -265,6 +265,25 @@ Las cuentas que crea el script tienen contraseñas conocidas (`123456`, `caja123
 
 ## Paso 10 — Cargar las fotos de los productos
 
+**10.1 — Fotos del menú (de una sola vez)**
+
+Las fotos del documento "Menú de imágenes Cafetería" ya están preparadas en el archivo **`imagenes_productos.sql`**, uno por producto.
+
+1. phpMyAdmin → clic en la base **cafeteria** → pestaña **Importar**.
+2. Elegí **`imagenes_productos.sql`** → **Importar**.
+
+Solo carga la foto en los productos que **todavía no tienen una**: si a alguno ya le pusieron foto desde el programa, la respeta. Se puede ejecutar más de una vez.
+
+Para verificar, en la pestaña **SQL**:
+```sql
+SELECT id, nombre FROM productos WHERE activo = 1 AND imagen IS NULL;
+```
+- [ ] Solo aparece **"Exprimido chico"**, que no tiene foto en el documento.
+
+Las mismas fotos, ya achicadas, están en la carpeta **`imagenes_productos/`** del proyecto, por si hay que volver a cargar alguna a mano.
+
+**10.2 — Cambiar o agregar una foto**
+
 Esto se hace desde el programa, no desde phpMyAdmin.
 
 1. Abrí **Stock**, elegí un producto y tocá **Editar producto**.
