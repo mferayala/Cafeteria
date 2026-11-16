@@ -65,12 +65,11 @@ Namespace CafeteriaOS
                 Return ResultadoCategoria.Falla("Ya existe la categoria """ & texto & """.")
             End If
 
-            Dim nueva As New Categoria With {
-                .ID = Datos.SiguienteIdCategoria(),
-                .Nombre = texto
-            }
-            Dim falla = GuardarEnBase(Sub() CatalogoRepo.InsertarCategoria(nueva))
+            Dim nueva As New Categoria With {.Nombre = texto}
+            ' El id lo asigna MySQL; sin base (pruebas) se numera en memoria.
+            Dim falla = GuardarEnBase(Sub() nueva.ID = CatalogoRepo.InsertarCategoria(nueva))
             If falla IsNot Nothing Then Return falla
+            If nueva.ID = 0 Then nueva.ID = Datos.SiguienteIdCategoria()
 
             Datos.ListaCategorias.Add(nueva)
             Return ResultadoCategoria.Exito()

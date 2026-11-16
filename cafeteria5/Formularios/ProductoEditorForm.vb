@@ -9,7 +9,7 @@ Namespace CafeteriaOS
     '''
     ''' Sirve para las dos cosas con un solo formulario: si se abre con Nothing arma
     ''' uno nuevo, y si se abre con un producto edita ese. Mantener una sola pantalla
-    ''' evita que la carga y la edicion seンダ de distinto modo y el producto quede
+    ''' evita que la carga y la edicion se hagan de distinto modo y el producto quede
     ''' con datos que el otro formulario no permite.
     '''
     ''' El precio de costo y el precio de venta estan separados a proposito: el
@@ -43,13 +43,22 @@ Namespace CafeteriaOS
         Private txtStockMinimo As NumericUpDown
         Private txtAtajo As TextBox
         Private lblSugerido As Label
+        Private picImagen As PictureBox
+        Private lblSinImagen As Label
+        Private WithEvents btnElegirImagen As Button
+        Private WithEvents btnQuitarImagen As Button
+
+        ''' <summary>Foto que se va a guardar (ya reducida). Nothing = sin foto.</summary>
+        Private imagenActual As Byte()
         Private WithEvents btnGuardar As Button
         Private WithEvents btnCancelar As Button
 
         ''' <summary>Abre el editor sobre un producto existente.</summary>
         Public Sub New(prod As Producto)
             producto = prod
-            esNuevo = prod Is Nothing
+            ' Sin ID todavia no existe en el catalogo: es un alta aunque venga con datos
+            ' precargados (el ingreso de stock la abre con el codigo de barras escaneado).
+            esNuevo = prod Is Nothing OrElse prod.ID = 0
             ArmarInterfaz()
             CargarDatos()
         End Sub
@@ -75,14 +84,15 @@ Namespace CafeteriaOS
             ' y los labels quedan cortados.
             AutoScaleMode = AutoScaleMode.Dpi
             AutoScaleDimensions = New SizeF(96, 96)
-            ' 15 filas de alto explicito (ver mas abajo) entran sin scrollbar.
-            ClientSize = New Size(820, 660)
+            ' 15 filas de alto explicito (ver mas abajo) entran sin scrollbar. El
+            ' ancho suma 200px a los 820 originales para la columna de la foto.
+            ClientSize = New Size(1020, 660)
             BackColor = Tema.BgPrincipal
             Font = Tema.Fuente(Tema.TamNormal)
 
             Dim raiz As New TableLayoutPanel With {
                 .Dock = DockStyle.Fill,
-                .ColumnCount = 3,
+                .ColumnCount = 4,
                 .RowCount = 15,
                 .BackColor = Tema.BgPrincipal,
                 .Padding = New Padding(16)
@@ -94,6 +104,8 @@ Namespace CafeteriaOS
             ' que no entra ni "Código de barras". El texto de sugerencia es corto
             ' ("Sugerido: $1.500") y se envuelve en dos lineas sin problema.
             raiz.ColumnStyles.Add(New ColumnStyle(SizeType.Absolute, 96))
+            ' Columna de la foto del producto, a la derecha de los datos generales.
+            raiz.ColumnStyles.Add(New ColumnStyle(SizeType.Absolute, 200))
 
             ' RowCount era 15 sin declarar ni un RowStyle: las filas caian al alto por
             ' defecto, que no es el alto del control, y los TextBox quedaban con la
@@ -171,7 +183,21 @@ Namespace CafeteriaOS
 
             AddSeparador(raiz, 11, "STOCK")
 
-            AddRow(raiz, 12, "Stock inicial", txtStock)
+            ArmarImagen(raiz)
+
+            ' El stock de un producto que ya existe solo cambia con movimientos de
+            ' stock (ingresos, ventas, ajustes), que dejan registro. Antes el campo se
+            ' podia editar aca, pero el cambio se descartaba sin avisar.
+            AddRow(raiz, 12, If(esNuevo, "Stock inicial", "Stock actual"), txtStock)
+            If Not esNuevo Then
+                txtStock.Enabled = False
+                Dim aviso = Tema.CrearLabel("Se cambia desde Stock", Tono.Terciario, Tema.TamMini)
+                aviso.AutoSize = False
+                aviso.Dock = DockStyle.Fill
+                aviso.TextAlign = ContentAlignment.MiddleLeft
+                raiz.Controls.Add(aviso, 2, 12)
+                raiz.SetColumnSpan(aviso, 2)
+            End If
             AddRow(raiz, 13, "Stock minimo", txtStockMinimo)
 
             btnGuardar = Tema.CrearBoton("Guardar", EstiloBoton.Exito, 150, 36)
@@ -188,7 +214,7 @@ Namespace CafeteriaOS
             acciones.Controls.Add(btnCancelar)
             acciones.Controls.Add(btnGuardar)
             raiz.Controls.Add(acciones, 0, 14)
-            raiz.SetColumnSpan(acciones, 3)
+            raiz.SetColumnSpan(acciones, 4)
 
             Controls.Add(raiz)
         End Sub
@@ -215,7 +241,82 @@ Namespace CafeteriaOS
                 .Margin = New Padding(0, 8, 0, 4)
             }
             panel.Controls.Add(lbl, 0, fila)
-            panel.SetColumnSpan(lbl, 3)
+            panel.SetColumnSpan(lbl, 4)
+        End Sub
+
+        ''' <summary>
+        ''' Foto en la columna derecha, a la altura de los datos generales (filas 0 a 6),
+        ''' y los botones para elegirla o quitarla en la fila 7.
+        ''' </summary>
+        Private Sub ArmarImagen(raiz As TableLayoutPanel)
+            Dim marco As New Panel With {
+                .Name = "th.tarjeta2",
+                .Dock = DockStyle.Fill,
+                .BackColor = Tema.Superficie2,
+                .BorderStyle = BorderStyle.FixedSingle,
+                .Margin = New Padding(12, 4, 0, 4)
+            }
+            picImagen = New PictureBox With {
+                .Dock = DockStyle.Fill,
+                .SizeMode = PictureBoxSizeMode.Zoom,
+                .BackColor = Color.Transparent
+            }
+            lblSinImagen = Tema.CrearLabel("Sin imagen", Tono.Terciario, Tema.TamMini)
+            lblSinImagen.AutoSize = False
+            lblSinImagen.Dock = DockStyle.Fill
+            lblSinImagen.TextAlign = ContentAlignment.MiddleCenter
+            marco.Controls.Add(picImagen)
+            marco.Controls.Add(lblSinImagen)
+            raiz.Controls.Add(marco, 3, 0)
+            raiz.SetRowSpan(marco, 7)
+
+            btnElegirImagen = Tema.CrearBoton("Elegir imagen...", EstiloBoton.Neutro, 120, 32)
+            btnQuitarImagen = Tema.CrearBoton("Quitar", EstiloBoton.Sutil, 64, 32)
+            btnElegirImagen.Margin = New Padding(0, 0, 4, 0)
+            Dim botones As New FlowLayoutPanel With {
+                .Dock = DockStyle.Fill,
+                .FlowDirection = FlowDirection.LeftToRight,
+                .WrapContents = False,
+                .BackColor = Color.Transparent,
+                .Margin = New Padding(12, 4, 0, 0)
+            }
+            botones.Controls.Add(btnElegirImagen)
+            botones.Controls.Add(btnQuitarImagen)
+            raiz.Controls.Add(botones, 3, 7)
+        End Sub
+
+        Private Sub MostrarImagen()
+            Dim img = ImagenProducto.ComoImagen(imagenActual)
+            picImagen.Image = img
+            picImagen.Visible = img IsNot Nothing
+            lblSinImagen.Visible = img Is Nothing
+            btnQuitarImagen.Enabled = img IsNot Nothing
+        End Sub
+
+        Private Sub btnElegirImagen_Click(sender As Object, e As EventArgs) Handles btnElegirImagen.Click
+            Using dlg As New OpenFileDialog With {
+                .Title = "Elegir imagen del producto",
+                .Filter = ImagenProducto.FiltroArchivos,
+                .Multiselect = False
+            }
+                If dlg.ShowDialog(Me) <> DialogResult.OK Then Return
+                Try
+                    Cursor = Cursors.WaitCursor
+                    imagenActual = ImagenProducto.DesdeArchivo(dlg.FileName)
+                Catch ex As Exception
+                    MessageBox.Show("No se pudo usar esa imagen: " & ex.Message, "Producto",
+                                    MessageBoxButtons.OK, MessageBoxIcon.Warning)
+                    Return
+                Finally
+                    Cursor = Cursors.Default
+                End Try
+            End Using
+            MostrarImagen()
+        End Sub
+
+        Private Sub btnQuitarImagen_Click(sender As Object, e As EventArgs) Handles btnQuitarImagen.Click
+            imagenActual = Nothing
+            MostrarImagen()
         End Sub
 
         Private Sub GuardarConEnter(ev As KeyEventArgs)
@@ -249,7 +350,7 @@ Namespace CafeteriaOS
             If cargandoSugerencias Then Return
             cargandoSugerencias = True
             Try
-                ' Las subcategorias si dependen de la categoria elegida, asi quedotnet --list-sdks
+                ' Las subcategorias si dependen de la categoria elegida, asi que
                 ' esta parte va cada vez que el usuario elige otra.
                 Dim subActual = Si(TextoDe(txtSubcategoria), "")
                 txtSubcategoria.Items.Clear()
@@ -284,6 +385,8 @@ Namespace CafeteriaOS
             If producto Is Nothing Then
                 txtUnidad.Text = "un"
                 txtStock.Value = 0
+                imagenActual = Nothing
+                MostrarImagen()
                 ActualizarSugerido()
                 txtNombre.Focus()
                 Return
@@ -302,6 +405,8 @@ Namespace CafeteriaOS
             txtStock.Value = Math.Max(0, Math.Min(producto.Stock, txtStock.Maximum))
             txtStockMinimo.Value = Math.Max(0, Math.Min(producto.StockMinimo,
                                                         txtStockMinimo.Maximum))
+            imagenActual = producto.Imagen
+            MostrarImagen()
             CargarSugerencias()
             ActualizarSugerido()
         End Sub
@@ -351,6 +456,7 @@ Namespace CafeteriaOS
             candidato.Categoria = TextoDe(txtCategoria)
             candidato.Subcategoria = TextoDe(txtSubcategoria)
             candidato.Atajo = TextoDe(txtAtajo)
+            candidato.Imagen = imagenActual
 
             Dim costo As Decimal
             Dim venta As Decimal

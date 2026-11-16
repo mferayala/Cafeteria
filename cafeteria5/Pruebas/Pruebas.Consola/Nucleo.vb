@@ -44,8 +44,6 @@ Namespace Prueba
                     DatosIniciales.CategoriasDeProductos()(0) = ProductoService.Todas)
 
             ' --- Autenticacion ---
-            Dim pistas = DatosIniciales.PistasDeLogin()
-            Revisar("Hay pistas de login", pistas.Count > 0)
             Dim admin = AutenticacionService.Buscar("admin@cafe.com", "123456")
             Revisar("Admin entra con sus credenciales", admin IsNot Nothing)
             Revisar("El rol de admin es Administrador", admin.Rol = RolUsuario.Administrador)
@@ -1135,6 +1133,7 @@ Namespace Prueba
             End Try
 
             PruebasCategoria.Correr()
+            PruebasImagenYRecuperacion()
 
             Console.WriteLine()
             If fallos = 0 Then
@@ -1144,6 +1143,96 @@ Namespace Prueba
                 Environment.ExitCode = 1
             End If
 
+        End Sub
+
+        ''' <summary>Fotos de productos y validaciones de la recuperacion de contraseña.</summary>
+        Sub PruebasImagenYRecuperacion()
+            Console.WriteLine()
+            Console.WriteLine("== Imagenes de productos ==")
+
+            Revisar("Iniciales de un nombre de dos palabras", ImagenProducto.Iniciales("Café con leche") = "CL")
+            Revisar("Iniciales de una sola palabra", ImagenProducto.Iniciales("Mbejú") = "M")
+            Revisar("Iniciales de un nombre vacio", ImagenProducto.Iniciales("") = "?")
+
+            Dim carpeta = Path.Combine(Path.GetTempPath(), "CafeteriaOS-pruebas-imagen")
+            Directory.CreateDirectory(carpeta)
+            Dim rutaPng = Path.Combine(carpeta, "grande.png")
+            Using bmp As New System.Drawing.Bitmap(1200, 800)
+                Using g = System.Drawing.Graphics.FromImage(bmp)
+                    g.Clear(System.Drawing.Color.Transparent)
+                    g.FillEllipse(System.Drawing.Brushes.SaddleBrown, 100, 100, 600, 600)
+                End Using
+                bmp.Save(rutaPng, System.Drawing.Imaging.ImageFormat.Png)
+            End Using
+
+            Dim bytes = ImagenProducto.DesdeArchivo(rutaPng)
+            Revisar("Una foto grande se guarda como JPEG", bytes.Length > 2 AndAlso bytes(0) = &HFF AndAlso bytes(1) = &HD8)
+            Dim img = ImagenProducto.ComoImagen(bytes)
+            Revisar("La foto se achica a 400px de lado mayor",
+                    img IsNot Nothing AndAlso img.Width = ImagenProducto.LadoMaximo AndAlso img.Height = 267)
+            Revisar("La misma foto no se decodifica dos veces", ReferenceEquals(img, ImagenProducto.ComoImagen(bytes)))
+            Revisar("Sin bytes no hay imagen", ImagenProducto.ComoImagen(Nothing) Is Nothing)
+
+            Dim rutaTexto = Path.Combine(carpeta, "no-es-imagen.jpg")
+            File.WriteAllText(rutaTexto, "hola")
+            Dim rechazada = False
+            Try
+                ImagenProducto.DesdeArchivo(rutaTexto)
+            Catch ex As InvalidOperationException
+                rechazada = True
+            End Try
+            Revisar("Un archivo que no es imagen se rechaza con un mensaje", rechazada)
+
+            Dim original = Datos.ListaProductos(0)
+            Dim copia As New Producto With {
+                .ID = original.ID, .Nombre = original.Nombre, .Precio = original.Precio,
+                .Categoria = original.Categoria, .Imagen = bytes}
+            Dim r = ProductoService.Guardar(copia)
+            Revisar("Editar un producto le deja la foto nueva", r.Ok AndAlso ReferenceEquals(original.Imagen, bytes))
+            copia = New Producto With {
+                .ID = original.ID, .Nombre = original.Nombre, .Precio = original.Precio,
+                .Categoria = original.Categoria, .Imagen = Nothing}
+            ProductoService.Guardar(copia)
+            Revisar("Quitar la foto de un producto la borra", Not original.TieneImagen())
+
+            Console.WriteLine()
+            Console.WriteLine("== Productos dados de baja ==")
+            Dim conAtajo = Datos.ListaProductos.First(Function(x) Not String.IsNullOrWhiteSpace(x.Atajo))
+            Dim stockAntes = conAtajo.Stock
+            Try
+                conAtajo.Activo = False
+                conAtajo.Stock = 0
+                Revisar("Un producto dado de baja no aparece en la busqueda",
+                        Not ProductoService.Buscar("").Contains(conAtajo))
+                Revisar("Un producto dado de baja no ocupa su atajo de teclado",
+                        Not Atajos.Mapa().ContainsValue(conAtajo))
+                Revisar("Un producto dado de baja no figura como stock critico",
+                        Not StockService.Criticos().Contains(conAtajo))
+                Revisar("Un producto dado de baja se sigue encontrando por id (ventas viejas)",
+                        ProductoService.PorId(conAtajo.ID) Is conAtajo)
+            Finally
+                conAtajo.Activo = True
+                conAtajo.Stock = stockAntes
+            End Try
+            Revisar("Un producto activo vuelve a aparecer en la busqueda",
+                    ProductoService.Buscar("").Contains(conAtajo))
+
+            Console.WriteLine()
+            Console.WriteLine("== Recuperacion de contraseña ==")
+            Revisar("El correo se muestra tapado",
+                    RecuperacionService.OcultarCorreo("cajera@cafe.com") = "ca****@cafe.com")
+            Revisar("Un correo corto tambien se tapa",
+                    RecuperacionService.OcultarCorreo("a@b.com") = "a***@b.com")
+            Revisar("Sin usuario no se pide codigo",
+                    Not RecuperacionService.SolicitarCodigoAsync("  ").Result.Ok)
+            Revisar("Sin base de datos la recuperacion avisa en vez de fallar",
+                    Not RecuperacionService.SolicitarCodigoAsync("admin@cafe.com").Result.Ok)
+            Revisar("Una contraseña nueva corta se rechaza",
+                    Not RecuperacionService.CambiarContrasena(1, "123456", "abc", "abc").Ok)
+            Revisar("Dos contraseñas distintas se rechazan",
+                    Not RecuperacionService.CambiarContrasena(1, "123456", "clave123", "clave124").Ok)
+            Revisar("Sin codigo no se cambia la contraseña",
+                    Not RecuperacionService.CambiarContrasena(1, "", "clave123", "clave123").Ok)
         End Sub
 
         Sub Revisar(descripcion As String, condicion As Boolean)

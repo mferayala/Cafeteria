@@ -34,6 +34,7 @@ Namespace CafeteriaOS
 
             Db.EnTransaccion(
                 Sub(cx, tx)
+                    StockRepo.BloquearProductos(cx, tx, venta.Items.Select(Function(i) i.ProductoID))
                     Dim metodoId = Db.MetodoPagoId(cx, tx, venta.MetodoPago)
 
                     Db.Ejecutar(cx, tx,
@@ -108,6 +109,7 @@ Namespace CafeteriaOS
 
             Db.EnTransaccion(
                 Sub(cx, tx)
+                    StockRepo.BloquearProductos(cx, tx, venta.Items.Select(Function(i) i.ProductoID))
                     Db.Ejecutar(cx, tx,
                         "UPDATE ventas SET estado = @estado, stock_descontado = @descontado, " &
                         "  anulada_en = @fecha, anulada_por = @emp, motivo_anulacion = @motivo " &
@@ -275,10 +277,14 @@ Namespace CafeteriaOS
         Public Shared Sub GuardarConVenta(c As ClienteRegistrado, ventaId As Integer)
             Dim telefono = If(c.Telefono = ClienteRegistrado.SinTelefono, Nothing, Db.NuloSiVacio(c.Telefono))
 
+            ' El id nuevo se asigna recien al confirmar la transaccion (ver ProveedorRepo).
+            Dim esNuevo = c.ID = 0
+            Dim clienteId = c.ID
+
             Db.EnTransaccion(
                 Sub(cx, tx)
-                    If c.ID = 0 Then
-                        c.ID = Db.Insertar(cx, tx,
+                    If esNuevo Then
+                        clienteId = Db.Insertar(cx, tx,
                             "INSERT INTO clientes (nombre, telefono) VALUES (@nombre, @tel)",
                             "@nombre", c.Nombre, "@tel", telefono)
                     Else
@@ -287,8 +293,9 @@ Namespace CafeteriaOS
                             "@nombre", c.Nombre, "@tel", telefono, "@id", c.ID)
                     End If
 
-                    If ventaId > 0 Then VentaRepo.AsignarCliente(cx, tx, ventaId, c.ID)
+                    If ventaId > 0 Then VentaRepo.AsignarCliente(cx, tx, ventaId, clienteId)
                 End Sub)
+            If esNuevo AndAlso clienteId > 0 Then c.ID = clienteId
         End Sub
 
     End Class

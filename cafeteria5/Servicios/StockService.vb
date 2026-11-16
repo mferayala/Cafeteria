@@ -206,7 +206,7 @@ Namespace CafeteriaOS
 
         Public Function Criticos() As List(Of Producto)
             Return Datos.ListaProductos.
-                Where(Function(p) p.Stock <= MinimoDe(p)).
+                Where(Function(p) p.Activo AndAlso p.Stock <= MinimoDe(p)).
                 ToList()
         End Function
 

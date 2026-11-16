@@ -30,7 +30,7 @@
   <ItemGroup>
     <Compile Include="$(Raiz)AppConfig.vb" Link="AppConfig.vb" />
     <Compile Include="$(Raiz)Datos.vb" Link="Datos.vb" />
-    <Compile Include="$(Raiz)DatosIniciales.vb" Link="DatosIniciales.vb" />
+    <Compile Include="../Comun/DatosDePrueba.vb" Link="DatosDePrueba.vb" />
     <Compile Include="$(Raiz)Enums.vb" Link="Enums.vb" />
     <Compile Include="$(Raiz)Tema.vb" Link="Tema.vb" />
     <Compile Include="$(Raiz)Modelos\*.vb" LinkBase="Modelos" />

@@ -34,6 +34,18 @@ Namespace CafeteriaOS
             End If
 
             Try
+                If Not Db.EsquemaActualizado(mensaje) Then
+                    MessageBox.Show(mensaje, "Cafeteria - actualizar base de datos",
+                                    MessageBoxButtons.OK, MessageBoxIcon.Warning)
+                    Return
+                End If
+            Catch ex As Exception
+                MessageBox.Show("No se pudo revisar la base de datos:" & vbCrLf & vbCrLf & ex.Message,
+                                "Cafeteria", MessageBoxButtons.OK, MessageBoxIcon.Error)
+                Return
+            End Try
+
+            Try
                 CargaBD.CargarTodo()
             Catch ex As Exception
                 MessageBox.Show("Se conecto a MySQL pero no se pudieron leer los datos:" &

@@ -89,11 +89,15 @@ Namespace CafeteriaOS
         ''' <summary>Alta si el proveedor no tiene ID; si no, actualiza sus datos.</summary>
         Public Shared Sub Guardar(p As Proveedor)
             Dim valores = Parametros(p)
+            ' El id nuevo se asigna recien cuando la transaccion se confirmo: si se
+            ' reintenta (o falla), el proveedor no queda con un id que no existe.
+            Dim esNuevo = p.ID = 0
+            Dim nuevoId = 0
 
             Db.EnTransaccion(
                 Sub(cx, tx)
-                    If p.ID = 0 Then
-                        p.ID = Db.Insertar(cx, tx,
+                    If esNuevo Then
+                        nuevoId = Db.Insertar(cx, tx,
                             "INSERT INTO proveedores (" & String.Join(", ", Columnas) & ", creado_por) " &
                             "VALUES (@" & String.Join(", @", Columnas) & ", @creado_por)",
                             Concatenar(valores, "@creado_por", Db.NuloSiVacio(p.CreadoPor)))
@@ -107,6 +111,7 @@ Namespace CafeteriaOS
                             Concatenar(valores, "@id", p.ID))
                     End If
                 End Sub)
+            If esNuevo AndAlso nuevoId > 0 Then p.ID = nuevoId
         End Sub
 
         ''' <summary>

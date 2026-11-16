@@ -12,7 +12,8 @@ Namespace CafeteriaOS
         Private lblContrasena As Label
         Private lblRol As Label
         Private lblError As Label
-        Private lblPista As Label
+        Private WithEvents chkMostrarContrasena As CheckBox
+        Private WithEvents lnkOlvide As LinkLabel
         Private txtUsuario As TextBox
         Private WithEvents txtContrasena As TextBox
         Private cmbRol As ComboBox
@@ -26,7 +27,8 @@ Namespace CafeteriaOS
             FormBorderStyle = FormBorderStyle.FixedDialog
             MaximizeBox = False
             MinimizeBox = False
-            ClientSize = New Size(440, 520)
+            ' Sin el bloque de "cuentas de prueba" el formulario es mas bajo.
+            ClientSize = New Size(440, 500)
             ' Sin esto WinForms escala con los valores por defecto y no con los que
             ' escribe el Designer: a 125% o 150% la fuente crece y las columnas no,
             ' y los labels quedan cortados.
@@ -58,9 +60,41 @@ Namespace CafeteriaOS
             txtUsuario = Tema.CrearInput()
             txtUsuario.Dock = DockStyle.Fill
 
-            lblContrasena = Etiqueta("Contrasena")
+            lblContrasena = Etiqueta("Contraseña")
             txtContrasena = Tema.CrearInput(esClave:=True)
             txtContrasena.Dock = DockStyle.Fill
+
+            ' Debajo de la contraseña: mostrarla (a la izquierda) y recuperarla (a la
+            ' derecha), en la misma fila para no alargar la ventana.
+            chkMostrarContrasena = Tema.CrearCheck("Mostrar contraseña")
+            chkMostrarContrasena.Anchor = AnchorStyles.Left
+            chkMostrarContrasena.TabStop = False
+
+            lnkOlvide = New LinkLabel With {
+                .Name = "th.tono.Acento",
+                .Text = "¿Olvidaste tu contraseña?",
+                .Font = Tema.Fuente(Tema.TamMini),
+                .AutoSize = True,
+                .Anchor = AnchorStyles.Right,
+                .BackColor = Color.Transparent,
+                .LinkBehavior = LinkBehavior.HoverUnderline,
+                .LinkColor = Tema.Acento2,
+                .ActiveLinkColor = Tema.Acento,
+                .Margin = New Padding(0)
+            }
+
+            Dim filaContrasena As New TableLayoutPanel With {
+                .Dock = DockStyle.Fill,
+                .Height = 24,
+                .ColumnCount = 2,
+                .RowCount = 1,
+                .BackColor = Color.Transparent,
+                .Margin = New Padding(0)
+            }
+            filaContrasena.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 50))
+            filaContrasena.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 50))
+            filaContrasena.Controls.Add(chkMostrarContrasena, 0, 0)
+            filaContrasena.Controls.Add(lnkOlvide, 1, 0)
 
             lblRol = Etiqueta("Rol")
             cmbRol = Tema.CrearCombo()
@@ -73,12 +107,6 @@ Namespace CafeteriaOS
             lblError.Height = 20
             lblError.TextAlign = ContentAlignment.MiddleLeft
 
-            ' El texto real lo completa LoginForm con DatosIniciales.PistasDeLogin.
-            lblPista = Tema.CrearLabel(String.Empty, Tono.Terciario, Tema.TamMicro)
-            lblPista.Dock = DockStyle.Fill
-            lblPista.Height = 62
-            lblPista.TextAlign = ContentAlignment.TopLeft
-
             btnIngresar = Tema.CrearBoton("Ingresar", EstiloBoton.Primario)
             btnIngresar.Dock = DockStyle.Fill
             btnIngresar.Height = 44
@@ -90,10 +118,9 @@ Namespace CafeteriaOS
             tarjeta.Controls.AddRange(New Control() {
                 lblTitulo, lblSubtitulo, Separador(10),
                 lblUsuario, txtUsuario, Separador(8),
-                lblContrasena, txtContrasena, Separador(8),
+                lblContrasena, txtContrasena, Separador(4), filaContrasena, Separador(6),
                 lblRol, cmbRol, Separador(4),
-                chkRecordar, Separador(2), lblError, Separador(2),
-                lblPista, Separador(10),
+                chkRecordar, Separador(2), lblError, Separador(10),
                 btnIngresar, Separador(8), btnSalir
             })
 

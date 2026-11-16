@@ -1,4 +1,6 @@
 ﻿Imports System.Collections.Generic
+Imports System.Linq
+Imports System.Threading.Tasks
 Imports System.Windows.Forms
 
 Namespace CafeteriaOS
@@ -18,6 +20,17 @@ Namespace CafeteriaOS
         Private botonera As New Dictionary(Of SeccionDashboard, Button)()
         Private seccionActual As SeccionDashboard = SeccionDashboard.Venta
 
+        ''' <summary>
+        ''' Cada cuanto se traen de la base los cambios de las otras PCs (pedidos nuevos
+        ''' para cocina, stock, ventas, caja). Tambien se sincroniza al cambiar de modulo
+        ''' y con F5.
+        ''' </summary>
+        Private Const SegundosEntreSincronizaciones As Integer = 15
+        Private WithEvents relojSincronizacion As New Timer With {
+            .Interval = SegundosEntreSincronizaciones * 1000}
+        Private sincronizando As Boolean
+        Private tituloOriginal As String
+
         Public Sub New()
             IniciarInterfaz()
             ' El designer pone "CAFETERIA" como texto de diseno. Acá va el nombre
@@ -30,6 +43,69 @@ Namespace CafeteriaOS
         Private Sub MainDashboardForm_Load(sender As Object, e As EventArgs) Handles MyBase.Load
             IndexarBotones()
             ActualizarUsuario()
+            tituloOriginal = Text
+            If Db.Habilitada Then relojSincronizacion.Start()
+        End Sub
+
+        ' ------------------------------------------------------------------
+        '  Sincronizacion con la base (lo que hacen las otras PCs)
+        ' ------------------------------------------------------------------
+
+        Private Async Sub relojSincronizacion_Tick(sender As Object, e As EventArgs) Handles relojSincronizacion.Tick
+            Await SincronizarAsync()
+        End Sub
+
+        ''' <summary>
+        ''' Trae de MySQL lo que cambio y, si algo cambio, refresca el modulo visible.
+        '''
+        ''' La lectura va en un hilo aparte para que la pantalla no se congele si la red
+        ''' esta lenta; la mezcla con los datos en memoria vuelve al hilo de la pantalla.
+        ''' Si hay un dialogo abierto (cobro, editor de producto, etc.) se espera a la
+        ''' proxima vuelta: no se cambian los datos debajo de algo que se esta editando.
+        ''' </summary>
+        Private Async Function SincronizarAsync() As Task
+            If sincronizando OrElse Not Db.Habilitada OrElse HayDialogoAbierto() Then Return
+            sincronizando = True
+            Try
+                ' Copia de las listas tomada aca, en el hilo de la pantalla.
+                Dim productos As New Dictionary(Of Integer, Producto)()
+                For Each p In Datos.ListaProductos
+                    productos(p.ID) = p
+                Next
+                Dim proveedores As New Dictionary(Of Integer, Proveedor)()
+                For Each p In Datos.ListaProveedores
+                    proveedores(p.ID) = p
+                Next
+
+                Dim lote = Await Task.Run(Function() CargaBD.LeerCambios(productos, proveedores))
+
+                If IsDisposed Then Return
+                MostrarConexion(True)
+                ' Si mientras se leia se abrio un dialogo, no se aplica: la proxima
+                ' vuelta vuelve a leer desde el mismo punto.
+                If HayDialogoAbierto() Then Return
+                If CargaBD.AplicarCambios(lote) AndAlso paneles.ContainsKey(seccionActual) Then
+                    paneles(seccionActual).Refrescar()
+                End If
+            Catch ex As Exception
+                ' Sin conexion: se avisa en el titulo y se reintenta en la proxima vuelta.
+                If Not IsDisposed Then MostrarConexion(False)
+            Finally
+                sincronizando = False
+            End Try
+        End Function
+
+        Private Function HayDialogoAbierto() As Boolean
+            For Each f As Form In Application.OpenForms
+                If f IsNot Me AndAlso f.Visible AndAlso Not TypeOf f Is LoginForm Then Return True
+            Next
+            Return False
+        End Function
+
+        Private Sub MostrarConexion(conectado As Boolean)
+            If tituloOriginal Is Nothing Then Return
+            Text = If(conectado, tituloOriginal,
+                      tituloOriginal & "  —  SIN CONEXION CON LA BASE DE DATOS (reintentando)")
         End Sub
 
         Private Sub IndexarBotones()
@@ -72,6 +148,8 @@ Namespace CafeteriaOS
             Tema.Restilar(panel)
             panel.Refrescar()
             MarcarActivo()
+            ' Al entrar a un modulo se traen los cambios de las otras PCs.
+            Dim pendiente = SincronizarAsync()
         End Sub
 
         Private Shared Function CrearPanel(seccion As SeccionDashboard) As PanelBase
@@ -160,6 +238,7 @@ Namespace CafeteriaOS
         End Sub
 
         Private Sub MainDashboardForm_FormClosing(sender As Object, e As FormClosingEventArgs) Handles MyBase.FormClosing
+            relojSincronizacion.Stop()
             If DialogResult = DialogResult.OK Then
                 Datos.UsuarioActual = Nothing
             End If
@@ -168,6 +247,7 @@ Namespace CafeteriaOS
         Protected Overrides Function ProcessCmdKey(ByRef msg As Message, keyData As Keys) As Boolean
             If keyData = Keys.F5 Then
                 If paneles.ContainsKey(seccionActual) Then paneles(seccionActual).Refrescar()
+                Dim pendiente = SincronizarAsync()
                 Return True
             End If
             Return MyBase.ProcessCmdKey(msg, keyData)

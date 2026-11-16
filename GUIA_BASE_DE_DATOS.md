@@ -9,15 +9,18 @@ Antes, el sistema guardaba todo en listas en memoria y lo perdía al cerrarse. C
 ## Paso 2: Crear la base con el script
 1. Entrá a `http://localhost/phpmyadmin`.
 2. Andá a la pestaña **Importar**, elegí el archivo **`cafeteria.sql`** (está en esta misma carpeta) y tocá **Importar**.
-3. A la izquierda tiene que aparecer la base **cafeteria** con 23 tablas y 2 vistas.
+3. A la izquierda tiene que aparecer la base **cafeteria** con 26 tablas y 2 vistas.
 
 > El script crea la base si no existe. Si ya existe, **borra las tablas y las vuelve a crear** con los datos de ejemplo. No lo vuelvas a importar cuando ya tengas ventas reales.
 
 Para comprobarlo, en la pestaña **SQL** de la base `cafeteria` corré:
 ```sql
-SELECT COUNT(*) FROM productos;      -- 40
+SELECT COUNT(*) FROM productos;      -- 35
 SELECT * FROM vista_stock_bajo;      -- productos con poco stock
 ```
+
+### Si ya tenías la base creada de antes
+No la vuelvas a importar: seguí **[PASO_A_PASO_BASE_DE_DATOS.md](PASO_A_PASO_BASE_DE_DATOS.md)**. Ahí está, en orden y con verificaciones, cómo hacer el backup, actualizar la base sin perder datos, configurar el correo para recuperar contraseñas y cargar las fotos de los productos.
 
 ## Paso 3: Abrir el proyecto en Visual Studio
 1. Abrí `cafeteria5.sln`.
@@ -25,7 +28,7 @@ SELECT * FROM vista_stock_bajo;      -- productos con poco stock
 3. Si tu usuario `root` de MySQL tiene contraseña, escribila en `BaseDatos/Db.vb`, en la línea `Pwd=;` (por ejemplo, `Pwd=miClave;`).
 
 ## Paso 4: Ejecutar y probar
-Presioná **F5**. Usuarios de prueba (podés entrar con el correo, el teléfono o el nombre):
+Presioná **F5**. Usuarios que crea el script (podés entrar con el correo, el teléfono o el nombre). El login ya no los muestra en pantalla; **cambiá estas contraseñas** antes de usar el sistema en el negocio:
 
 | Usuario | Contraseña | Rol |
 |---|---|---|

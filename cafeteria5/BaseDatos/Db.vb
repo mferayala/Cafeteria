@@ -73,12 +73,62 @@ Namespace CafeteriaOS
         End Function
 
         ''' <summary>
+        ''' Revisa que la base tenga las tablas y columnas que agrego la ultima version
+        ''' del programa. Una base importada antes no las tiene, y sin este aviso el
+        ''' error aparece recien al guardar un producto o recuperar una contraseña.
+        ''' </summary>
+        Public Shared Function EsquemaActualizado(ByRef mensaje As String) As Boolean
+            Const Sql As String =
+                "SELECT " &
+                " (SELECT COUNT(*) FROM information_schema.columns " &
+                "   WHERE table_schema = DATABASE() AND column_name = 'imagen' AND table_name = 'productos') + " &
+                " (SELECT COUNT(*) FROM information_schema.columns " &
+                "   WHERE table_schema = DATABASE() AND column_name = 'actualizado_en' " &
+                "     AND table_name IN ('ventas', 'movimientos_stock', 'ingresos_stock')) + " &
+                " (SELECT COUNT(*) FROM information_schema.tables " &
+                "   WHERE table_schema = DATABASE() " &
+                "     AND table_name IN ('configuracion_correo', 'recuperaciones_contrasena', 'secuencias'))"
+            Const Esperados As Integer = 7
+            Using cx = Abrir()
+                Dim encontrados = Convert.ToInt32(Escalar(cx, Nothing, Sql))
+                If encontrados = Esperados Then
+                    mensaje = String.Empty
+                    Return True
+                End If
+            End Using
+            mensaje = "A la base de datos le faltan las tablas nuevas (imagenes de productos, " &
+                      "recuperacion de contraseña y numeracion compartida entre PCs)." & vbCrLf & vbCrLf &
+                      "En phpMyAdmin, elegi la base 'cafeteria', anda a la pestaña Importar y " &
+                      "ejecuta el archivo actualizacion_login_imagenes.sql (esta junto a cafeteria.sql). " &
+                      "No borra ningun dato."
+            Return False
+        End Function
+
+        ''' <summary>
         ''' Corre varias escrituras como una sola operacion: o se guardan todas o no se
         ''' guarda ninguna. Si algo falla en el medio, MySQL deshace lo que ya se habia
         ''' escrito (Rollback) y el error sigue hacia arriba.
+        '''
+        ''' Con varias PCs, dos transacciones pueden trabarse entre si (deadlock) o
+        ''' esperar un bloqueo demasiado tiempo. MySQL deshace una de las dos y pide
+        ''' reintentarla: se reintenta sola hasta 3 veces, porque el trabajo se vuelve a
+        ''' correr desde cero sobre una transaccion nueva.
         ''' </summary>
         Public Shared Sub EnTransaccion(trabajo As Action(Of MySqlConnection, MySqlTransaction))
             If Not Habilitada Then Return
+            Const Intentos As Integer = 3
+            For intento = 1 To Intentos
+                Try
+                    EjecutarTransaccion(trabajo)
+                    Return
+                Catch ex As MySqlException When EsReintentable(ex) AndAlso intento < Intentos
+                    ' Una pausa corta y distinta en cada PC para no volver a chocar.
+                    Threading.Thread.Sleep(50 * intento + Random.Shared.Next(50))
+                End Try
+            Next
+        End Sub
+
+        Private Shared Sub EjecutarTransaccion(trabajo As Action(Of MySqlConnection, MySqlTransaction))
             Using cx = Abrir()
                 Using tx = cx.BeginTransaction()
                     Try
@@ -95,6 +145,11 @@ Namespace CafeteriaOS
                 End Using
             End Using
         End Sub
+
+        ''' <summary>1213 = deadlock, 1205 = se vencio la espera de un bloqueo.</summary>
+        Private Shared Function EsReintentable(ex As MySqlException) As Boolean
+            Return ex.Number = 1213 OrElse ex.Number = 1205
+        End Function
 
         ''' <summary>
         ''' Arma un comando con sus parametros. Los parametros van de a pares:
@@ -170,6 +225,13 @@ Namespace CafeteriaOS
             Dim v = r(campo)
             If IsDBNull(v) Then Return String.Empty
             Return Convert.ToString(v)
+        End Function
+
+        ''' <summary>Columna BLOB. Nothing si viene NULL.</summary>
+        Public Shared Function Bytes(r As IDataRecord, campo As String) As Byte()
+            Dim v = r(campo)
+            If IsDBNull(v) Then Return Nothing
+            Return DirectCast(v, Byte())
         End Function
 
         Public Shared Function Entero(r As IDataRecord, campo As String) As Integer

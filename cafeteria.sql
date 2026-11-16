@@ -27,7 +27,8 @@ DROP TABLE IF EXISTS auditoria, movimientos_caja, sesiones_caja, cajas,
                      metodos_pago, detalle_ingresos, ingresos_stock,
                      movimientos_stock, producto_opciones, productos,
                      subcategorias, categorias, proveedores, clientes,
-                     empleados, usuarios, roles, configuracion_negocio;
+                     empleados, usuarios, roles, configuracion_negocio,
+                     recuperaciones_contrasena, configuracion_correo, secuencias;
 SET FOREIGN_KEY_CHECKS = 1;
 
 
@@ -119,6 +120,55 @@ CREATE TABLE configuracion_negocio (
     actualizado_en           DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     CONSTRAINT ck_config_fila_unica CHECK (id = 1)
+) ENGINE=InnoDB;
+
+
+-- ---------------------------------------------------------------------
+--  RECUPERACION DE CONTRASEÑA POR CORREO
+-- ---------------------------------------------------------------------
+
+-- Cuenta de correo con la que el programa manda los codigos (una sola fila).
+-- Con Gmail: servidor smtp.gmail.com, puerto 587, usar_ssl 1, usuario = la
+-- direccion de Gmail y contrasena = una "contraseña de aplicacion" de 16
+-- letras (Cuenta de Google > Seguridad > Contraseñas de aplicaciones), NO la
+-- contraseña normal de la cuenta.
+CREATE TABLE configuracion_correo (
+    id             TINYINT       NOT NULL,
+    servidor_smtp  VARCHAR(150)  NOT NULL DEFAULT 'smtp.gmail.com',
+    puerto         INT           NOT NULL DEFAULT 587,
+    usar_ssl       TINYINT(1)    NOT NULL DEFAULT 1,
+    usuario        VARCHAR(150)  NULL,
+    contrasena     VARCHAR(255)  NULL,
+    remitente      VARCHAR(150)  NULL,
+    actualizado_en DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    CONSTRAINT ck_correo_fila_unica CHECK (id = 1)
+) ENGINE=InnoDB;
+
+-- Codigos enviados. Se guarda el hash SHA-256 del codigo, no el codigo.
+-- Vence a los 15 minutos, admite 5 intentos y solo vale el ultimo enviado.
+CREATE TABLE recuperaciones_contrasena (
+    id           BIGINT     NOT NULL AUTO_INCREMENT,
+    usuario_id   BIGINT     NOT NULL,
+    codigo_hash  CHAR(64)   NOT NULL,
+    expira_en    DATETIME   NOT NULL,
+    intentos     INT        NOT NULL DEFAULT 0,
+    usado        TINYINT(1) NOT NULL DEFAULT 0,
+    creado_en    DATETIME   NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY ix_recuperaciones_usuario (usuario_id, usado),
+    CONSTRAINT fk_recuperaciones_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios (id)
+        ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+
+-- Numeracion compartida entre todas las PCs: ventas, pedidos, movimientos de
+-- stock e ingresos piden aca su proximo numero (ver SecuenciaRepo.vb). Un
+-- contador en cada PC daba el mismo numero en dos cajas abiertas a la vez.
+CREATE TABLE secuencias (
+    nombre  VARCHAR(40) NOT NULL,
+    valor   BIGINT      NOT NULL DEFAULT 0,
+    PRIMARY KEY (nombre)
 ) ENGINE=InnoDB;
 
 
@@ -234,10 +284,12 @@ CREATE TABLE productos (
     descripcion           VARCHAR(500)  NULL,
     precio_venta          DECIMAL(12,2) NOT NULL DEFAULT 0,
     costo                 DECIMAL(12,2) NOT NULL DEFAULT 0,
-    stock_actual          DECIMAL(12,3) NOT NULL DEFAULT 0,
-    stock_minimo          DECIMAL(12,3) NOT NULL DEFAULT 0,
+    stock_actual          INT           NOT NULL DEFAULT 0,
+    stock_minimo          INT           NOT NULL DEFAULT 0,
     unidad_medida         VARCHAR(20)   NOT NULL DEFAULT 'un',
     atajo                 VARCHAR(20)   NULL,
+    -- Foto ya reducida por el programa (JPEG de ~400px, unos 30-60 KB).
+    imagen                MEDIUMBLOB    NULL,
     requiere_vencimiento  TINYINT(1)    NOT NULL DEFAULT 0,
     fecha_vencimiento     DATE          NULL,
     disponible_venta      TINYINT(1)    NOT NULL DEFAULT 1,
@@ -280,6 +332,8 @@ CREATE TABLE ingresos_stock (
     usuario_id     BIGINT       NULL,
     fecha          DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     observaciones  VARCHAR(500) NULL,
+    -- Lo pone el servidor; la sincronizacion entre PCs lo usa para ver que cambio.
+    actualizado_en   DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     KEY ix_ingresos_fecha (fecha),
     CONSTRAINT fk_ingresos_proveedor FOREIGN KEY (proveedor_id) REFERENCES proveedores (id) ON DELETE SET NULL,
@@ -290,7 +344,7 @@ CREATE TABLE detalle_ingresos (
     id           BIGINT        NOT NULL AUTO_INCREMENT,
     ingreso_id   BIGINT        NOT NULL,
     producto_id  BIGINT        NOT NULL,
-    cantidad     DECIMAL(12,3) NOT NULL,
+    cantidad     INT           NOT NULL,
     observacion  VARCHAR(255)  NULL,
     PRIMARY KEY (id),
     CONSTRAINT fk_detalle_ingresos_ingreso  FOREIGN KEY (ingreso_id)  REFERENCES ingresos_stock (id) ON DELETE CASCADE,
@@ -307,13 +361,15 @@ CREATE TABLE movimientos_stock (
     producto_id      BIGINT        NOT NULL,
     usuario_id       BIGINT        NULL,
     tipo             ENUM('Ingreso','Reposicion','Ajuste','Venta','Cancelacion','Devolucion') NOT NULL,
-    cantidad         DECIMAL(12,3) NOT NULL,
-    stock_anterior   DECIMAL(12,3) NOT NULL,
-    stock_posterior  DECIMAL(12,3) NOT NULL,
+    cantidad         INT           NOT NULL,
+    stock_anterior   INT           NOT NULL,
+    stock_posterior  INT           NOT NULL,
     referencia_tipo  VARCHAR(50)   NULL,
     referencia_id    BIGINT        NULL,
     motivo           VARCHAR(255)  NULL,
     creado_en        DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    -- Lo pone el servidor; la sincronizacion entre PCs lo usa para ver que cambio.
+    actualizado_en   DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     KEY ix_movstock_producto (producto_id, creado_en),
     KEY ix_movstock_referencia (referencia_tipo, referencia_id),
@@ -363,6 +419,8 @@ CREATE TABLE ventas (
     anulada_en         DATETIME      NULL,
     anulada_por        BIGINT        NULL,
     motivo_anulacion   VARCHAR(255)  NULL,
+    -- Lo pone el servidor; la sincronizacion entre PCs lo usa para ver que cambio.
+    actualizado_en   DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     UNIQUE KEY uq_ventas_numero (numero),
     KEY ix_ventas_fecha (fecha_venta),
@@ -379,7 +437,7 @@ CREATE TABLE detalle_ventas (
     venta_id          BIGINT        NOT NULL,
     producto_id       BIGINT        NOT NULL,
     producto_nombre   VARCHAR(150)  NOT NULL,
-    cantidad          DECIMAL(12,3) NOT NULL,
+    cantidad          INT           NOT NULL,
     precio_unitario   DECIMAL(12,2) NOT NULL,
     subtotal          DECIMAL(12,2) NOT NULL,
     especificaciones  VARCHAR(255)  NULL,
@@ -444,7 +502,7 @@ CREATE TABLE detalle_pedidos (
     id               BIGINT        NOT NULL AUTO_INCREMENT,
     pedido_id        BIGINT        NOT NULL,
     producto_id      BIGINT        NOT NULL,
-    cantidad         DECIMAL(12,3) NOT NULL,
+    cantidad         INT           NOT NULL,
     precio_unitario  DECIMAL(12,2) NOT NULL DEFAULT 0,
     subtotal         DECIMAL(12,2) NOT NULL DEFAULT 0,
     observaciones    VARCHAR(255)  NULL,
@@ -578,7 +636,7 @@ END$$
 
 DELIMITER ;
 -- ---------------------------------------------------------------------
---  DATOS INICIALES (los mismos que traia DatosIniciales.vb)
+--  DATOS INICIALES (el programa ya no trae productos ni usuarios en el codigo)
 -- ---------------------------------------------------------------------
 
 INSERT INTO roles (id, nombre, descripcion) VALUES
@@ -608,8 +666,11 @@ INSERT INTO cajas (id, nombre, ubicacion) VALUES (1, 'Caja principal', 'Mostrado
 
 INSERT INTO configuracion_negocio (id, nombre_negocio) VALUES (1, '');
 
+-- Completar usuario y contrasena para poder recuperar contraseñas por correo.
+INSERT INTO configuracion_correo (id) VALUES (1);
+
 INSERT INTO categorias (id, nombre) VALUES
-  (1, 'Cafes'),
+  (1, 'Cafés'),
   (2, 'Promos'),
   (3, 'Panificados'),
   (4, 'Hamburguesas'),
@@ -617,90 +678,77 @@ INSERT INTO categorias (id, nombre) VALUES
   (6, 'Limonadas');
 
 INSERT INTO productos (id, categoria_id, nombre, descripcion, precio_venta, stock_actual, atajo) VALUES
-  (1, 1, 'Cafe negro', 'Cafe solo', 3000, 45, 'Ctrl+1'),
-  (2, 1, 'Cafe con leche', 'Cafe con leche', 3500, 40, 'Ctrl+2'),
-  (3, 1, 'Te/mate cocido solo', 'Infusion sola', 3000, 60, 'Ctrl+3'),
-  (4, 1, 'Te/mate cocido con leche', 'Infusion con leche', 3500, 55, 'Ctrl+4'),
-  (5, 1, 'Capuccino', 'Con espuma de leche', 4000, 35, 'Ctrl+5'),
+  (1, 1, 'Café negro', 'Café solo', 3000, 45, 'Ctrl+1'),
+  (2, 1, 'Café con leche', 'Café con leche', 3500, 40, 'Ctrl+2'),
+  (3, 1, 'Té o mate cocido solo', 'Infusión sola', 3000, 60, 'Ctrl+3'),
+  (4, 1, 'Té o mate cocido con leche', 'Infusión con leche', 3500, 55, 'Ctrl+4'),
+  (5, 1, 'Capuchino', 'Con espuma de leche', 4000, 35, 'Ctrl+5'),
   (6, 1, 'Submarino', 'Leche caliente con chocolate', 4500, 25, 'Ctrl+6'),
-  (7, 1, 'Chocolatada fria/caliente', 'Chocolatada a eleccion', 4000, 30, 'Ctrl+7'),
-  (8, 1, 'Frapuccino', 'Cafe frio batido', 4000, 28, 'Ctrl+8'),
-  (9, 2, 'Cafe c/leche + 2 medialunas', 'Promo desayuno', 5000, 25, NULL),
-  (10, 2, 'Cafe c/leche + chipas', 'Promo con chipas', 5000, 25, NULL),
-  (11, 2, 'Cafe c/leche + tostado JYQ', 'Promo con tostado', 6000, 20, NULL),
-  (12, 2, 'Cafe c/leche + 2 medialunas + jugo', 'Promo completa', 6000, 20, NULL),
+  (7, 1, 'Chocolatada fría o caliente', 'Chocolatada a elección', 4000, 30, 'Ctrl+7'),
+  (8, 1, 'Frapuchino', 'Café frío batido', 4000, 28, 'Ctrl+8'),
+  (9, 2, 'Café con leche + 2 medialunas', 'Promo desayuno', 5000, 25, NULL),
+  (10, 2, 'Café con leche + chipas', 'Promo con chipas', 5000, 25, NULL),
+  (11, 2, 'Café con leche + tostado de jamón y queso', 'Promo con tostado', 6000, 20, NULL),
+  (12, 2, 'Café con leche + 2 medialunas + jugo', 'Promo completa', 6000, 20, NULL),
   (13, 2, 'Exprimido chico', 'Precio pendiente de cargar', 0, 20, NULL),
-  (14, 2, 'Cocido quemado + mbeju', 'Promo regional', 6000, 20, NULL),
-  (15, 2, 'Frapuccino + 2 medialunas', 'Promo fria', 5500, 20, NULL),
+  (14, 2, 'Cocido quemado + mbejú', 'Promo regional', 6000, 20, NULL),
+  (15, 2, 'Frapuchino + 2 medialunas', 'Promo fría', 5500, 20, NULL),
   (16, 3, 'Chipa', 'Chipa por unidad', 100, 100, 'Ctrl+9'),
   (17, 3, 'Chipa 4 unidades', 'Combo 4 chipas', 3500, 50, NULL),
-  (18, 3, 'Chipitas 100g', 'Chipitas por 100g', 2000, 40, NULL),
-  (19, 3, 'Chipitas 250g', 'Chipitas por 250g', 4500, 30, NULL),
-  (20, 3, 'Mbeju', 'Mbeju', 3500, 20, 'Ctrl+0'),
+  (18, 3, 'Chipitas 100 g', 'Chipitas por 100 g', 2000, 40, NULL),
+  (19, 3, 'Chipitas 250 g', 'Chipitas por 250 g', 4500, 30, NULL),
+  (20, 3, 'Mbejú', 'Mbejú', 3500, 20, 'Ctrl+0'),
   (21, 3, 'Medialuna', 'Medialuna', 1000, 40, 'Ctrl+Q'),
-  (22, 3, 'Medialuna c/JYQ', 'Medialuna con jamon y queso', 1500, 30, NULL),
+  (22, 3, 'Medialuna con jamón y queso', 'Medialuna con jamón y queso', 1500, 30, NULL),
   (23, 3, 'Alfajor de maicena', 'Alfajor de maicena', 1000, 30, NULL),
-  (24, 3, 'Sandwich de miga JYQ', 'Sandwich de miga', 3000, 25, NULL),
-  (25, 3, 'Tostado de JYQ', 'Tostado de jamon y queso', 3500, 20, 'Ctrl+W'),
+  (24, 3, 'Sándwich de miga de jamón y queso', 'Sándwich de miga', 3000, 25, NULL),
+  (25, 3, 'Tostado de jamón y queso', 'Tostado de jamón y queso', 3500, 20, 'Ctrl+W'),
   (26, 4, 'Hamburguesa simple', 'Hamburguesa simple', 4000, 20, NULL),
   (27, 4, 'Hamburguesa doble', 'Hamburguesa doble', 5000, 20, NULL),
-  (28, 4, 'Combo hamburguesa simple', 'Hamburguesa simple con acompanamiento', 9000, 15, NULL),
-  (29, 4, 'Porcion de papas', 'Papas fritas', 3500, 25, NULL),
-  (30, 5, 'Licuado comun local', 'Licuado para consumir en local', 3500, 30, NULL),
-  (31, 5, 'Licuado comun para llevar', 'Licuado para llevar', 3700, 30, NULL),
-  (32, 5, 'Licuado comun + tostado local', 'Licuado comun con tostado', 6500, 20, NULL),
-  (33, 5, 'Licuado comun + tostado llevar', 'Licuado comun con tostado para llevar', 6700, 20, NULL),
-  (34, 5, 'Licuado especial local', 'Licuado especial', 4000, 25, NULL),
-  (35, 5, 'Licuado especial para llevar', 'Licuado especial para llevar', 4200, 25, NULL),
-  (36, 5, 'Licuado especial + tostado local', 'Licuado especial con tostado', 7000, 20, NULL),
-  (37, 5, 'Licuado especial + tostado llevar', 'Licuado especial con tostado para llevar', 7200, 20, NULL),
-  (38, 6, 'Limonada vaso local', 'Limón, menta y jengibre', 2000, 30, NULL),
-  (39, 6, 'Limonada vaso para llevar', 'Limonada para llevar', 2200, 30, NULL),
-  (40, 6, 'Limonada jarra', 'Jarra de limonada', 600, 15, NULL);
+  (28, 4, 'Combo hamburguesa simple', 'Hamburguesa simple con acompañamiento', 9000, 15, NULL),
+  (29, 4, 'Porción de papas', 'Papas fritas', 3500, 25, NULL),
+  (30, 5, 'Licuado común', 'Licuado de fruta', 3500, 60, NULL),
+  (32, 5, 'Licuado común + tostado', 'Licuado común con tostado', 6500, 40, NULL),
+  (34, 5, 'Licuado especial', 'Licuado especial', 4000, 50, NULL),
+  (36, 5, 'Licuado especial + tostado', 'Licuado especial con tostado', 7000, 40, NULL),
+  (38, 6, 'Limonada en vaso', 'Limón, menta y jengibre', 2000, 60, NULL),
+  (40, 6, 'Limonada en jarra', 'Jarra de limonada', 600, 15, NULL);
 
 INSERT INTO producto_opciones (producto_id, grupo, opcion, orden) VALUES
   (2, 'Leche', 'Entera', 1),
   (2, 'Leche', 'Descremada', 2),
   (2, 'Leche', 'Vegetal', 3),
-  (2, 'Azucar', 'Sin azucar', 4),
-  (2, 'Azucar', 'Normal', 5),
-  (2, 'Azucar', 'Edulcorante', 6),
-  (3, 'Infusion', 'Te', 1),
-  (3, 'Infusion', 'Mate cocido', 2),
-  (7, 'Temperatura', 'Fria', 1),
+  (2, 'Azúcar', 'Sin azúcar', 4),
+  (2, 'Azúcar', 'Normal', 5),
+  (2, 'Azúcar', 'Edulcorante', 6),
+  (3, 'Infusión', 'Té', 1),
+  (3, 'Infusión', 'Mate cocido', 2),
+  (7, 'Temperatura', 'Fría', 1),
   (7, 'Temperatura', 'Caliente', 2),
   (30, 'Fruta', 'Frutilla', 1),
   (30, 'Fruta', 'Banana', 2),
   (30, 'Fruta', 'Durazno', 3),
-  (30, 'Fruta', 'Anana', 4),
-  (30, 'Fruta', 'Melon', 5),
+  (30, 'Fruta', 'Ananá', 4),
+  (30, 'Fruta', 'Melón', 5),
   (30, 'Fruta', 'Mango', 6),
   (30, 'Fruta', 'Guayaba', 7),
   (30, 'Fruta', 'Naranja', 8),
-  (31, 'Fruta', 'Frutilla', 1),
-  (31, 'Fruta', 'Banana', 2),
-  (31, 'Fruta', 'Durazno', 3),
-  (31, 'Fruta', 'Anana', 4),
-  (31, 'Fruta', 'Melon', 5),
-  (31, 'Fruta', 'Mango', 6),
-  (31, 'Fruta', 'Guayaba', 7),
-  (31, 'Fruta', 'Naranja', 8),
   (34, 'Sabor', 'Super frutilla', 1),
-  (34, 'Sabor', 'Banana c/leche', 2),
-  (34, 'Sabor', 'Durazno c/leche', 3),
+  (34, 'Sabor', 'Banana con leche', 2),
+  (34, 'Sabor', 'Durazno con leche', 3),
   (34, 'Sabor', 'Naranja-mango', 4),
   (34, 'Sabor', 'Mango-durazno', 5),
-  (34, 'Sabor', 'Anana-naranja', 6),
+  (34, 'Sabor', 'Ananá-naranja', 6),
   (34, 'Sabor', 'Frutos rojos', 7),
   (34, 'Sabor', 'Frutos del bosque', 8),
-  (34, 'Sabor', 'Arandanos', 9),
+  (34, 'Sabor', 'Arándanos', 9),
   (34, 'Sabor', 'Kiwi', 10),
-  (34, 'Sabor', 'Frutilla-anana', 11),
+  (34, 'Sabor', 'Frutilla-ananá', 11),
   (34, 'Sabor', 'Frambuesa', 12),
   (34, 'Sabor', 'Mora', 13),
   (34, 'Sabor', 'Frambuesa-frutilla', 14),
-  (34, 'Sabor', 'Maracuya', 15),
-  (38, 'Temperatura', 'Fria', 1),
+  (34, 'Sabor', 'Maracuyá', 15),
+  (38, 'Temperatura', 'Fría', 1),
   (38, 'Temperatura', 'Caliente', 2);
 
 INSERT INTO proveedores
@@ -734,3 +782,10 @@ VALUES
    '{"Contactos":[],"Telefonos":[],"Archivos":[],"Movimientos":[],"HistorialCambios":[]}',
    CURDATE(), 'Sistema', 'Sistema');
 
+-- Las secuencias arrancan desde el mayor numero ya usado (con la base nueva, 0).
+INSERT INTO secuencias (nombre, valor)
+SELECT 'ventas', COALESCE(MAX(id), 0) FROM ventas
+UNION ALL SELECT 'pedidos', COALESCE(MAX(id), 0) FROM pedidos
+UNION ALL SELECT 'movimientos_stock', COALESCE(MAX(id), 0) FROM movimientos_stock
+UNION ALL SELECT 'ingresos_stock', COALESCE(MAX(id), 0) FROM ingresos_stock
+ON DUPLICATE KEY UPDATE valor = GREATEST(valor, VALUES(valor));

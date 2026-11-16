@@ -37,6 +37,22 @@ Namespace CafeteriaOS
 
         Public Property Specs As New List(Of EspecificacionGrupo)()
 
+        ''' <summary>
+        ''' False = dado de baja (productos.activo = 0). No se ofrece para vender, buscar
+        ''' ni reponer, pero sigue cargado para que las ventas viejas lo encuentren.
+        ''' </summary>
+        Public Property Activo As Boolean = True
+
+        ''' <summary>
+        ''' Foto del producto ya reducida (JPEG, ver ImagenProducto). Nothing si no
+        ''' tiene. Se guarda en la columna productos.imagen.
+        ''' </summary>
+        Public Property Imagen As Byte()
+
+        Public Function TieneImagen() As Boolean
+            Return Imagen IsNot Nothing AndAlso Imagen.Length > 0
+        End Function
+
         Public Function TienePrecio() As Boolean
             Return Precio > 0D
         End Function

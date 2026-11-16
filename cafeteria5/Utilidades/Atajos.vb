@@ -72,6 +72,8 @@ Namespace CafeteriaOS
         Public Function Mapa() As Dictionary(Of Keys, Producto)
             Dim resultado As New Dictionary(Of Keys, Producto)()
             For Each producto In Datos.ListaProductos
+                ' Un producto dado de baja no puede seguir ocupando una tecla.
+                If Not producto.Activo Then Continue For
                 Dim tecla = TeclaDe(producto.Atajo)
                 If tecla <> Keys.None AndAlso Not resultado.ContainsKey(tecla) Then
                     resultado.Add(tecla, producto)

@@ -65,7 +65,13 @@ Namespace CafeteriaOS
                 .Observaciones = String.Empty & observaciones,
                 .RegistradoPor = Datos.UsuarioActualNombre()
             }
-            Datos.RegistrarIngreso(ingreso)
+            ' Pedir el numero ya consulta la base: si MySQL no responde, no se toco nada.
+            Try
+                Datos.RegistrarIngreso(ingreso)
+            Catch ex As Exception
+                resultado.Mensaje = "No se pudo registrar el ingreso: " & ex.Message
+                Return resultado
+            End Try
 
             ' Stock de cada producto antes del ingreso, por si hay que volver atras.
             Dim stockAntes As New Dictionary(Of Producto, Integer)()
@@ -73,15 +79,17 @@ Namespace CafeteriaOS
                 stockAntes(d.Producto) = d.Producto.Stock
             Next
 
-            ' persistir:=False porque el ingreso entero se guarda abajo, en una sola
-            ' transaccion, en lugar de un movimiento por vez.
-            For Each d In lineas
-                StockService.Ajustar(d.Producto, d.Cantidad, TipoMovimientoStock.Ingreso,
-                                     Datos.UsuarioActualNombre(), d.Observacion, ingreso.ID,
-                                     persistir:=False)
-            Next
-
             Try
+                ' persistir:=False porque el ingreso entero se guarda abajo, en una sola
+                ' transaccion, en lugar de un movimiento por vez. Va dentro del Try: cada
+                ' movimiento pide su numero a la base, y si eso falla a mitad de camino
+                ' hay que deshacer tambien las lineas que ya se habian sumado.
+                For Each d In lineas
+                    StockService.Ajustar(d.Producto, d.Cantidad, TipoMovimientoStock.Ingreso,
+                                         Datos.UsuarioActualNombre(), d.Observacion, ingreso.ID,
+                                         persistir:=False)
+                Next
+
                 Dim movimientos = Datos.ListaMovimientos.
                     Where(Function(m) m.Tipo = TipoMovimientoStock.Ingreso AndAlso m.ReferenciaID = ingreso.ID).
                     ToList()

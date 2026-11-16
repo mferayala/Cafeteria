@@ -1,4 +1,5 @@
 Imports System.Collections.Generic
+Imports System.Linq
 Imports MySql.Data.MySqlClient
 
 Namespace CafeteriaOS
@@ -24,6 +25,30 @@ Namespace CafeteriaOS
         ''' vendieran el mismo producto a la vez, la segunda espera a la primera en vez
         ''' de pisar su descuento.
         ''' </summary>
+        ''' <summary>
+        ''' Bloquea las filas de los productos que va a tocar la transaccion, todas
+        ''' juntas y siempre en el mismo orden (por id), ANTES de escribir nada.
+        '''
+        ''' Sin esto, dos cajas vendiendo el mismo producto a la vez se trababan
+        ''' (deadlock): cada una insertaba su detalle (que toma un bloqueo compartido
+        ''' sobre el producto por la clave foranea) y despues pedia el bloqueo exclusivo
+        ''' para descontar, esperando a la otra para siempre. MySQL cancelaba una y la
+        ''' venta fallaba.
+        ''' </summary>
+        Public Shared Sub BloquearProductos(cx As MySqlConnection, tx As MySqlTransaction,
+                                           ids As IEnumerable(Of Integer))
+            Dim lista = ids.Where(Function(i) i > 0).Distinct().OrderBy(Function(i) i).ToList()
+            If lista.Count = 0 Then Return
+            ' Son enteros: pegarlos al SQL no permite inyeccion.
+            Using cmd = Db.Comando(cx, tx,
+                "SELECT id FROM productos WHERE id IN (" & String.Join(",", lista) & ") ORDER BY id FOR UPDATE")
+                Using r = cmd.ExecuteReader()
+                    While r.Read()
+                    End While
+                End Using
+            End Using
+        End Sub
+
         Public Shared Sub Aplicar(cx As MySqlConnection, tx As MySqlTransaction, m As MovimientoStock)
             If m Is Nothing OrElse m.Producto Is Nothing OrElse m.Cantidad = 0 Then Return
 
@@ -36,6 +61,17 @@ Namespace CafeteriaOS
             End If
 
             Dim anterior = Convert.ToDecimal(valor)
+
+            ' Esta PC controlo el stock con lo que tenia en memoria, pero otra caja pudo
+            ' haber vendido lo ultimo hace un instante. La base es la que manda: si no
+            ' alcanza, la venta se rechaza entera en vez de dejar el stock en cero con
+            ' unidades que no existian.
+            If m.Tipo = TipoMovimientoStock.Venta AndAlso anterior + m.Cantidad < 0D Then
+                Throw New InvalidOperationException(
+                    "No hay stock suficiente de " & m.Producto.Nombre & ": quedan " & anterior &
+                    " (otra caja vendio mientras tanto). Revisa el pedido y volve a intentar.")
+            End If
+
             Dim posterior = Math.Max(0D, anterior + m.Cantidad)
 
             Db.Ejecutar(cx, tx, "UPDATE productos SET stock_actual = @s WHERE id = @id",
@@ -61,7 +97,13 @@ Namespace CafeteriaOS
 
         ''' <summary>Ajuste manual o reposicion: un solo movimiento en su propia transaccion.</summary>
         Public Shared Sub GuardarAjuste(m As MovimientoStock)
-            Db.EnTransaccion(Sub(cx, tx) Aplicar(cx, tx, m))
+            Db.EnTransaccion(
+                Sub(cx, tx)
+                    If m IsNot Nothing AndAlso m.Producto IsNot Nothing Then
+                        BloquearProductos(cx, tx, {m.Producto.ID})
+                    End If
+                    Aplicar(cx, tx, m)
+                End Sub)
         End Sub
 
         ''' <summary>
@@ -71,6 +113,7 @@ Namespace CafeteriaOS
         Public Shared Sub GuardarIngreso(ingreso As IngresoStock, movimientos As List(Of MovimientoStock))
             Db.EnTransaccion(
                 Sub(cx, tx)
+                    BloquearProductos(cx, tx, ingreso.Detalles.Select(Function(d) d.Producto.ID))
                     Dim proveedorId As Object = Nothing
                     If ingreso.Proveedor IsNot Nothing Then proveedorId = Db.NuloSiCero(ingreso.Proveedor.ID)
 

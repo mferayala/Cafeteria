@@ -3,7 +3,7 @@
 Namespace CafeteriaOS
 
     ''' <summary>
-    ''' Ventana de ingreso. Valida contra los usuarios en memoria, exige que el rol elegido
+    ''' Ventana de ingreso. Valida contra la tabla usuarios, exige que el rol elegido
     ''' coincida con el del usuario y abre el dashboard cerrandose a si misma, de modo que
     ''' no queda un proceso huerfano detras de la ventana principal.
     ''' </summary>
@@ -14,7 +14,6 @@ Namespace CafeteriaOS
             ' El designer deja el texto de diseno; el nombre real del negocio viene
             ' de la configuracion, asi que se reemplaza despues de armar la pantalla.
             lblTitulo.Text = Datos.ConfigNegocio.NombreParaMostrar().ToUpperInvariant()
-            lblPista.Text = DatosIniciales.PistasDeLogin()
         End Sub
 
         Private Sub LoginForm_Load(sender As Object, e As EventArgs) Handles MyBase.Load
@@ -39,7 +38,35 @@ Namespace CafeteriaOS
             End If
         End Sub
 
+        ''' <summary>
+        ''' Alterna entre ver la contraseña y taparla. Se vuelve a tapar sola al
+        ''' ingresar o al cerrar sesion, para que no quede a la vista del siguiente.
+        ''' </summary>
+        Private Sub chkMostrarContrasena_CheckedChanged(sender As Object, e As EventArgs) _
+            Handles chkMostrarContrasena.CheckedChanged
+            txtContrasena.UseSystemPasswordChar = Not chkMostrarContrasena.Checked
+        End Sub
+
+        Private Sub lnkOlvide_LinkClicked(sender As Object, e As LinkLabelLinkClickedEventArgs) _
+            Handles lnkOlvide.LinkClicked
+            MostrarError("")
+            Using f As New RecuperarContrasenaForm(txtUsuario.Text.Trim())
+                If f.ShowDialog(Me) = DialogResult.OK Then
+                    If txtUsuario.TextLength = 0 Then txtUsuario.Text = f.IdentificadorUsado
+                    txtContrasena.Text = String.Empty
+                    MostrarAviso("Contraseña actualizada. Ingresa con la nueva.")
+                    txtContrasena.Focus()
+                End If
+            End Using
+        End Sub
+
         Private Sub MostrarError(mensaje As String)
+            lblError.ForeColor = Tema.ColorDeTono(Tono.Peligro)
+            lblError.Text = mensaje
+        End Sub
+
+        Private Sub MostrarAviso(mensaje As String)
+            lblError.ForeColor = Tema.ColorDeTono(Tono.Exito)
             lblError.Text = mensaje
         End Sub
 
@@ -55,14 +82,14 @@ Namespace CafeteriaOS
                 Return
             End If
             If contrasena.Length = 0 Then
-                MostrarError("Ingresa la contrasena.")
+                MostrarError("Ingresa la contraseña.")
                 txtContrasena.Focus()
                 Return
             End If
 
             Dim usuario = AutenticacionService.Buscar(identificador, contrasena)
             If usuario Is Nothing Then
-                MostrarError("Usuario o contrasena incorrectos.")
+                MostrarError("Usuario o contraseña incorrectos.")
                 txtContrasena.SelectAll()
                 txtContrasena.Focus()
                 Return
@@ -83,6 +110,7 @@ Namespace CafeteriaOS
             ' Estado real de la sesion: el resto de la app depende de esto.
             Datos.UsuarioActual = usuario
             txtContrasena.Text = ""
+            chkMostrarContrasena.Checked = False
 
             Using dashboard As New MainDashboardForm()
                 Hide()

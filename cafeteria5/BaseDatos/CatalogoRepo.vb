@@ -5,8 +5,8 @@ Namespace CafeteriaOS
     ''' <summary>
     ''' Categorias, subcategorias y productos.
     '''
-    ''' Los ids de categorias y productos los asigna el programa (Datos.SiguienteId...)
-    ''' y se guardan tal cual, para que el id en memoria y el de MySQL sean el mismo.
+    ''' Los ids de categorias y productos nuevos los asigna MySQL (AUTO_INCREMENT) y el
+    ''' alta los devuelve, para que el id en memoria y el de la base sean el mismo.
     ''' </summary>
     Public NotInheritable Class CatalogoRepo
 
@@ -17,13 +17,16 @@ Namespace CafeteriaOS
         '  Categorias
         ' ------------------------------------------------------------------
 
-        Public Shared Sub InsertarCategoria(c As Categoria)
+        ''' <summary>Devuelve el id que asigno MySQL, o 0 si se trabaja sin base.</summary>
+        Public Shared Function InsertarCategoria(c As Categoria) As Integer
+            Dim id = 0
             Db.EnTransaccion(
                 Sub(cx, tx)
-                    Db.Ejecutar(cx, tx, "INSERT INTO categorias (id, nombre) VALUES (@id, @nombre)",
-                                "@id", c.ID, "@nombre", c.Nombre)
+                    id = Db.Insertar(cx, tx, "INSERT INTO categorias (nombre) VALUES (@nombre)",
+                                     "@nombre", c.Nombre)
                 End Sub)
-        End Sub
+            Return id
+        End Function
 
         ''' <summary>
         ''' Los productos apuntan a la categoria por id, asi que renombrarla es un solo
@@ -78,18 +81,21 @@ Namespace CafeteriaOS
         '  Productos
         ' ------------------------------------------------------------------
 
-        ''' <summary>Alta de un producto con sus opciones. El ID ya viene asignado.</summary>
-        Public Shared Sub InsertarProducto(p As Producto)
+        ''' <summary>
+        ''' Alta de un producto con sus opciones. Devuelve el id que asigno MySQL, o 0
+        ''' si se trabaja sin base.
+        ''' </summary>
+        Public Shared Function InsertarProducto(p As Producto) As Integer
+            Dim id = 0
             Db.EnTransaccion(
                 Sub(cx, tx)
                     Dim categoriaId = IdCategoria(p.Categoria)
-                    Db.Ejecutar(cx, tx,
+                    id = Db.Insertar(cx, tx,
                         "INSERT INTO productos " &
-                        "  (id, categoria_id, subcategoria_id, codigo, nombre, marca, descripcion, " &
-                        "   precio_venta, costo, stock_actual, stock_minimo, unidad_medida, atajo) " &
-                        "VALUES (@id, @cat, @sub, @codigo, @nombre, @marca, @desc, " &
-                        "        @precio, @costo, @stock, @minimo, @unidad, @atajo)",
-                        "@id", p.ID,
+                        "  (categoria_id, subcategoria_id, codigo, nombre, marca, descripcion, " &
+                        "   precio_venta, costo, stock_actual, stock_minimo, unidad_medida, atajo, imagen) " &
+                        "VALUES (@cat, @sub, @codigo, @nombre, @marca, @desc, " &
+                        "        @precio, @costo, @stock, @minimo, @unidad, @atajo, @imagen)",
                         "@cat", categoriaId,
                         "@sub", IdSubcategoria(cx, tx, categoriaId, p.Subcategoria),
                         "@codigo", Db.NuloSiVacio(p.CodigoBarra),
@@ -101,7 +107,8 @@ Namespace CafeteriaOS
                         "@stock", Math.Max(0, p.Stock),
                         "@minimo", p.StockMinimo,
                         "@unidad", If(String.IsNullOrWhiteSpace(p.UnidadMedida), "un", p.UnidadMedida),
-                        "@atajo", Db.NuloSiVacio(p.Atajo))
+                        "@atajo", Db.NuloSiVacio(p.Atajo),
+                        "@imagen", ImagenParaDb(p))
 
                     Dim orden = 0
                     For Each grupo In p.Specs
@@ -110,11 +117,12 @@ Namespace CafeteriaOS
                             Db.Ejecutar(cx, tx,
                                 "INSERT INTO producto_opciones (producto_id, grupo, opcion, orden) " &
                                 "VALUES (@p, @g, @o, @n)",
-                                "@p", p.ID, "@g", grupo.Etiqueta, "@o", opcion, "@n", orden)
+                                "@p", id, "@g", grupo.Etiqueta, "@o", opcion, "@n", orden)
                         Next
                     Next
                 End Sub)
-        End Sub
+            Return id
+        End Function
 
         ''' <summary>
         ''' Guarda los cambios de un producto. El stock NO se toca: solo cambia a traves
@@ -128,7 +136,7 @@ Namespace CafeteriaOS
                         "UPDATE productos SET categoria_id = @cat, subcategoria_id = @sub, " &
                         "  codigo = @codigo, nombre = @nombre, marca = @marca, descripcion = @desc, " &
                         "  precio_venta = @precio, costo = @costo, stock_minimo = @minimo, " &
-                        "  unidad_medida = @unidad, atajo = @atajo " &
+                        "  unidad_medida = @unidad, atajo = @atajo, imagen = @imagen " &
                         "WHERE id = @id",
                         "@cat", categoriaId,
                         "@sub", IdSubcategoria(cx, tx, categoriaId, p.Subcategoria),
@@ -141,9 +149,16 @@ Namespace CafeteriaOS
                         "@minimo", p.StockMinimo,
                         "@unidad", If(String.IsNullOrWhiteSpace(p.UnidadMedida), "un", p.UnidadMedida),
                         "@atajo", Db.NuloSiVacio(p.Atajo),
+                        "@imagen", ImagenParaDb(p),
                         "@id", p.ID)
                 End Sub)
         End Sub
+
+        ''' <summary>Sin foto se guarda NULL, no un BLOB vacio.</summary>
+        Private Shared Function ImagenParaDb(p As Producto) As Object
+            If Not p.TieneImagen() Then Return Nothing
+            Return p.Imagen
+        End Function
 
         ''' <summary>Id de la categoria por nombre, o Nothing (NULL) si no tiene.</summary>
         Private Shared Function IdCategoria(nombre As String) As Object

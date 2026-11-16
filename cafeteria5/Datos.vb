@@ -4,7 +4,8 @@ Namespace CafeteriaOS
 
     ''' <summary>
     ''' Estado compartido de la sesion. Solo contiene el estado: la carga inicial vive en
-    ''' DatosIniciales y las reglas estan en Servicios.
+    ''' BaseDatos\CargaBD (y se mantiene al dia con CargaBD.Sincronizar) y las reglas
+    ''' estan en Servicios.
     ''' </summary>
     Public Module Datos
 
@@ -46,10 +47,22 @@ Namespace CafeteriaOS
         End Function
 
         Public Sub RegistrarPedido(p As Pedido)
-            p.ID = contadorPedidos
-            contadorPedidos += 1
+            p.ID = Siguiente(SecuenciaRepo.Pedidos, contadorPedidos)
             ListaPedidos.Add(p)
         End Sub
+
+        ''' <summary>
+        ''' Proximo numero de una secuencia. Con base de datos lo entrega MySQL (tabla
+        ''' secuencias), que es el unico lugar que ven todas las PCs: un contador en
+        ''' memoria daba el mismo numero en dos cajas abiertas a la vez. Sin base (los
+        ''' proyectos de Pruebas) se usa el contador local.
+        ''' </summary>
+        Private Function Siguiente(secuencia As String, ByRef contador As Integer) As Integer
+            If Db.Habilitada Then Return SecuenciaRepo.Siguiente(secuencia)
+            Dim id = contador
+            contador += 1
+            Return id
+        End Function
 
         ''' <summary>
         ''' Secuencia propia de las ventas. No comparte contador con los pedidos: una
@@ -65,9 +78,7 @@ Namespace CafeteriaOS
         ''' historial y un ticket puede quedar guardado con el mismo numero que otro.
         ''' </summary>
         Public Function ReservarIdVenta() As Integer
-            Dim id = contadorVentas
-            contadorVentas += 1
-            Return id
+            Return Siguiente(SecuenciaRepo.Ventas, contadorVentas)
         End Function
 
         Public Sub RegistrarVenta(v As Venta)
@@ -162,23 +173,21 @@ Namespace CafeteriaOS
 
         Public Sub RegistrarMovimiento(m As MovimientoStock)
             If m Is Nothing Then Return
-            m.ID = contadorMovimientos
-            contadorMovimientos += 1
+            m.ID = Siguiente(SecuenciaRepo.MovimientosStock, contadorMovimientos)
             ListaMovimientos.Add(m)
         End Sub
 
 
 
         Public Sub RegistrarIngreso(i As IngresoStock)
-            i.ID = contadorIngresos
-            contadorIngresos += 1
+            i.ID = Siguiente(SecuenciaRepo.IngresosStock, contadorIngresos)
             ListaIngresos.Add(i)
         End Sub
 
         ''' <summary>
-        ''' Retoma la numeracion despues de cargar la base de datos. Cada contador
-        ''' sigue desde el mayor id guardado, asi un registro nuevo nunca choca con
-        ''' uno que ya existe en MySQL.
+        ''' Retoma los contadores locales desde el mayor id guardado. Con base de datos
+        ''' los numeros nuevos salen de la tabla secuencias; esto queda como respaldo
+        ''' del modo sin base.
         ''' </summary>
         Public Sub AjustarContadores(maxVenta As Integer,
                                      maxPedido As Integer,

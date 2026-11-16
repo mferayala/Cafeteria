@@ -4,23 +4,27 @@ Imports System.Linq
 Namespace CafeteriaOS
 
     ''' <summary>
-    ''' Autenticacion en memoria y permisos por rol. Reemplaza la consulta SQL que
-    ''' existía en la version con base de datos.
+    ''' Autenticacion y permisos por rol. Los usuarios viven en la tabla usuarios de
+    ''' MySQL: el programa no trae ninguna cuenta escrita en el codigo.
     ''' </summary>
     Public Module AutenticacionService
 
-        Private ReadOnly usuarios As List(Of Usuario) = DatosIniciales.Usuarios()
+        ''' <summary>
+        ''' Solo para el modo sin base de datos (los proyectos de Pruebas): ahi no hay
+        ''' tabla usuarios, asi que cada prueba carga aca las cuentas que necesita.
+        ''' La aplicacion real nunca la llena.
+        ''' </summary>
+        Public ReadOnly Property UsuariosEnMemoria As New List(Of Usuario)()
 
         ''' <summary>
         ''' Busca por correo, telefono o nombre de usuario. Devuelve Nothing si la
-        ''' contrasena no coincide. Con base de datos la consulta va a la tabla usuarios;
-        ''' sin base (pruebas) usa la lista de DatosIniciales como antes.
+        ''' contrasena no coincide. Con base de datos la consulta va a la tabla usuarios.
         ''' </summary>
         Public Function Buscar(identificador As String, contrasena As String) As Usuario
             If Db.Habilitada Then Return UsuarioRepo.Autenticar(identificador, contrasena)
 
             Dim clave = If(identificador, String.Empty).Trim()
-            Return usuarios.FirstOrDefault(
+            Return UsuariosEnMemoria.FirstOrDefault(
                 Function(u) u.Identificador.Equals(clave, StringComparison.OrdinalIgnoreCase) AndAlso
                             u.Contrasena = contrasena)
         End Function

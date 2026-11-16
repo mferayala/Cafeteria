@@ -315,6 +315,7 @@ Namespace CafeteriaOS
             End While
 
             For Each producto In Datos.ListaProductos
+                If Not producto.Activo Then Continue For
                 Dim coincideCategoria = ProductoService.PerteneceACategoria(producto, categoria)
                 ' NombreCompleto ya junta marca, nombre y descripcion, asi que la
                 ' busqueda del POS cubre las tres sin repetir el criterio.
@@ -336,7 +337,7 @@ Namespace CafeteriaOS
 
             Dim tarjeta As New Panel With {
                 .Name = "th.tarjeta",
-                .Height = 104,
+                .Height = 104 + AltoFoto,
                 .BackColor = Tema.Superficie,
                 .Cursor = Cursors.Hand,
                 .Margin = New Padding(0, 0, 10, 10),
@@ -386,11 +387,49 @@ Namespace CafeteriaOS
                 .TextAlign = ContentAlignment.BottomLeft
             }
 
-            tarjeta.Controls.AddRange(New Control() {lblAtajo, lblPrecio, lblNombre, lblStock})
-            If disponible <= 0 Or Not producto.TienePrecio() Then tarjeta.Enabled = False
+            ' Va ultima en la lista para que se acomode primero arriba de todo: WinForms
+            ' dockea desde el ultimo control agregado hacia el primero.
+            tarjeta.Controls.AddRange(New Control() {lblAtajo, lblPrecio, lblNombre, lblStock,
+                                                     ArmarFoto(producto)})
+            If disponible <= 0 OrElse Not producto.TienePrecio() Then tarjeta.Enabled = False
 
             ConectarTarjeta(tarjeta, producto)
             Return tarjeta
+        End Function
+
+        ''' <summary>Alto de la foto (o del recuadro con iniciales) arriba de cada tarjeta.</summary>
+        Private Const AltoFoto As Integer = 84
+
+        ''' <summary>
+        ''' Foto del producto. Sin foto, un recuadro con las iniciales: asi todas las
+        ''' tarjetas miden lo mismo y la grilla no queda despareja.
+        ''' La imagen sale de un cache compartido (ImagenProducto), por eso se libera la
+        ''' tarjeta sin liberar la imagen: PictureBox.Dispose no toca su Image.
+        ''' </summary>
+        Private Shared Function ArmarFoto(producto As Producto) As Control
+            Dim img = ImagenProducto.ComoImagen(producto.Imagen)
+            If img IsNot Nothing Then
+                Return New PictureBox With {
+                    .Dock = DockStyle.Top,
+                    .Height = AltoFoto,
+                    .SizeMode = PictureBoxSizeMode.Zoom,
+                    .Image = img,
+                    .BackColor = Color.Transparent,
+                    .Margin = New Padding(0)
+                }
+            End If
+
+            Return New Label With {
+                .Name = "th.tarjeta2",
+                .Text = ImagenProducto.Iniciales(producto.Nombre),
+                .Dock = DockStyle.Top,
+                .Height = AltoFoto,
+                .TextAlign = ContentAlignment.MiddleCenter,
+                .Font = Tema.Fuente(Tema.TamNumero, FontStyle.Bold),
+                .ForeColor = Tema.Acento2,
+                .BackColor = Tema.Superficie2,
+                .Margin = New Padding(0)
+            }
         End Function
 
         ''' <summary>

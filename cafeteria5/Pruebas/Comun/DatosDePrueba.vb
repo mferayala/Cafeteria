@@ -4,7 +4,11 @@ Imports System.Linq
 Namespace CafeteriaOS
 
     ''' <summary>
-    ''' Datos de arranque del sistema. La version sin base de datos carga todo en memoria.
+    ''' Datos de PRUEBA. Solo los compilan los proyectos de Pruebas, que corren sin
+    ''' MySQL: la aplicacion real lee el catalogo, los usuarios y los proveedores de la
+    ''' base (ver cafeteria.sql y BaseDatos\CargaBD.vb) y no incluye este archivo.
+    '''
+    ''' El modulo conserva el nombre DatosIniciales para no tener que tocar cada prueba.
     ''' </summary>
     Public Module DatosIniciales
 
@@ -27,6 +31,8 @@ Namespace CafeteriaOS
             ' proveedores y los productos ya cargados.
             IngresoAlmacen.Cargar()
             Datos.UsuarioActual = Nothing
+            AutenticacionService.UsuariosEnMemoria.Clear()
+            AutenticacionService.UsuariosEnMemoria.AddRange(Usuarios())
             Datos.Caja = New SesionCaja()
         End Sub
 
@@ -162,18 +168,6 @@ Namespace CafeteriaOS
                 New Usuario With {.Nombre = "Cajera", .Email = "cajera@cafe.com", .Telefono = "87654321", .Contrasena = "caja123", .Rol = RolUsuario.Cajero},
                 New Usuario With {.Nombre = "Cocinera", .Email = "cocina@cafe.com", .Telefono = "11111111", .Contrasena = "cocina123", .Rol = RolUsuario.Cocina}
             }
-        End Function
-
-        ''' <summary>
-        ''' Texto de ayuda del login. Se arma desde <see cref="Usuarios"/> para que las
-        ''' claves mostradas nunca puedan quedar desfasadas respecto de los datos reales.
-        ''' </summary>
-        Public Function PistasDeLogin() As String
-            Dim lineas = New List(Of String) From {"Cuentas de prueba"}
-            For Each usuario In Usuarios()
-                lineas.Add(usuario.Identificador & " / " & usuario.Contrasena)
-            Next
-            Return String.Join(Environment.NewLine, lineas)
         End Function
 
         Public Function Proveedores() As List(Of Proveedor)

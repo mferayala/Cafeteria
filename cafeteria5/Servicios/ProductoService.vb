@@ -92,9 +92,11 @@ Namespace CafeteriaOS
             RegistrarCategoriaDelProducto(p)
 
             If p.ID = 0 Then
-                p.ID = Datos.SiguienteIdProducto()
                 Try
-                    CatalogoRepo.InsertarProducto(p)
+                    ' Con base de datos el id lo asigna MySQL (AUTO_INCREMENT): asi dos
+                    ' cajas cargando productos a la vez no pueden elegir el mismo numero.
+                    p.ID = CatalogoRepo.InsertarProducto(p)
+                    If p.ID = 0 Then p.ID = Datos.SiguienteIdProducto()
                 Catch ex As Exception
                     p.ID = 0
                     resultado.Mensaje = "No se pudo guardar el producto en la base de datos: " & ex.Message
@@ -173,6 +175,7 @@ Namespace CafeteriaOS
             destino.Subcategoria = origen.Subcategoria
             destino.Descripcion = origen.Descripcion
             destino.Atajo = origen.Atajo
+            destino.Imagen = origen.Imagen
         End Sub
 
         Public Function PorId(id As Integer) As Producto
@@ -225,6 +228,9 @@ Namespace CafeteriaOS
         ''' </summary>
         Private Function CumpleFiltro(p As Producto, texto As String,
                                        categoria As String, subcategoria As String) As Boolean
+
+            ' Los dados de baja no aparecen en ninguna lista para elegir.
+            If Not p.Activo Then Return False
 
             If categoria.Length > 0 Then
                 If Not Si(p.Categoria, "").Trim().Equals(categoria,
