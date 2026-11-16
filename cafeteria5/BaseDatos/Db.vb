@@ -1,4 +1,5 @@
-﻿Imports System.Data
+﻿Imports System.Collections.Generic
+Imports System.Data
 Imports MySql.Data.MySqlClient
 
 Namespace CafeteriaOS
@@ -58,7 +59,15 @@ Namespace CafeteriaOS
                 mensaje = String.Empty
                 Return True
             Catch ex As Exception
-                mensaje = ex.Message
+                ' El conector suele envolver la causa real ("Fatal error encountered during
+                ' data read" no dice por que): se juntan todos los mensajes.
+                Dim partes As New List(Of String)()
+                Dim actual As Exception = ex
+                While actual IsNot Nothing
+                    If Not partes.Contains(actual.Message) Then partes.Add(actual.Message)
+                    actual = actual.InnerException
+                End While
+                mensaje = String.Join(" -> ", partes)
                 Return False
             End Try
         End Function

@@ -36,8 +36,11 @@ Namespace CafeteriaOS
         ''' <summary>
         ''' SslMode=Disabled: el MySQL de XAMPP no trae certificados.
         ''' AllowUserVariables: para @usuario_id, que leen los triggers de auditoria.
-        ''' ConnectionTimeout corto: si la PC de la base esta apagada o sin red, el aviso
-        ''' sale en segundos y no despues de 15.
+        ''' ConnectionTimeout de 30 segundos: cuando una PC se conecta por primera vez,
+        ''' MySQL intenta averiguar su nombre en la red y en redes de casa o negocio eso
+        ''' puede tardar varios segundos. Con 5 segundos (lo que habia antes) la otra PC
+        ''' cortaba a mitad del saludo con "Fatal error encountered during data read".
+        ''' MySQL recuerda el resultado, asi que solo la primera conexion es lenta.
         ''' </summary>
         Public Function CadenaConexion() As String
             Dim b As New MySqlConnectionStringBuilder With {
@@ -49,7 +52,7 @@ Namespace CafeteriaOS
                 .CharacterSet = "utf8mb4",
                 .SslMode = MySqlSslMode.Disabled,
                 .AllowUserVariables = True,
-                .ConnectionTimeout = 5
+                .ConnectionTimeout = 30
             }
             Return b.ConnectionString
         End Function
@@ -73,6 +76,11 @@ Namespace CafeteriaOS
                 consejo = "No se encontró el servidor. Revisá la IP, que la PC de XAMPP esté prendida " &
                           "con MySQL en verde, que las dos PCs estén en la misma red y que el firewall " &
                           "de la PC de XAMPP deje pasar el puerto 3306 (paso 5.2 del paso a paso)."
+            ElseIf m.Contains("data read") OrElse m.Contains("Reading from the stream") Then
+                consejo = "Se llego al servidor pero la conexion se corto mientras respondia. La primera " &
+                          "vez que una PC se conecta, MySQL puede tardar unos segundos: proba de nuevo. " &
+                          "Si sigue, revisa que la senal de Wi-Fi sea buena (o usa cable) y que el " &
+                          "antivirus de alguna de las dos PCs no este bloqueando el programa."
             ElseIf m.Contains("productos") AndAlso m.Contains("doesn't exist") Then
                 consejo = "La base existe pero está vacía: falta importar cafeteria.sql."
             Else
